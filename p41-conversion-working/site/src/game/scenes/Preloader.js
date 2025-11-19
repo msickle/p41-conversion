@@ -1,38 +1,78 @@
+import { GameConfig } from '../config.js';
+
 export class Preloader extends Phaser.Scene {
     constructor() {
         super('Preloader');
     }
 
     init() {
-        //  We loaded this image in our Boot Scene, so we can display it here
-        //this.add.image(512, 384, 'background');
+        // Set background color for preloader
+        this.cameras.main.setBackgroundColor(GameConfig.STATE_BG_COLOR_PRELOADER);
 
-        //  A simple progress bar. This is the outline of the bar.
-        this.add.rectangle(512, 384, 468, 32).setStrokeStyle(1, 0xffffff);
+        // Display preloader bar
+        const centerX = this.game.config.width / 2;
+        const centerY = this.game.config.height / 2;
 
-        //  This is the progress bar itself. It will increase in size from the left based on the % of progress.
-        const bar = this.add.rectangle(512 - 230, 384, 4, 28, 0xffffff);
+        this.preLoadBar = this.add.sprite(centerX - 100, centerY, 'preloaderBar');
+        
+        // Add loading text
+        this.add.text(centerX, centerY - 30, GameConfig.TEXT_PRELOAD, { 
+            font: "32px monospace", 
+            fill: "#ffe" 
+        }).setOrigin(0.5, 0.5);
 
-        //  Use the 'progress' event emitted by the LoaderPlugin to update the loading bar
-        this.load.on('progress', (progress) => {
-
-            //  Update the progress bar (our bar is 464px wide, so 100% = 464px)
-            bar.width = 4 + (460 * progress);
-
+        // Use the preloader bar as loading indicator
+        this.load.on('progress', (value) => {
+            this.preLoadBar.setCrop(0, 0, this.preLoadBar.width * value, this.preLoadBar.height);
         });
     }
 
     preload() {
-        //  Load the assets for the game - Replace with your own assets
-        this.load.setPath('assets');
+        // Set base path for assets
+        this.load.setPath('src/assets/game');
 
+        // Load sprite sheets
+        this.load.spritesheet('testSpriteSheet', 'gridtiles.png', { frameWidth: 16, frameHeight: 16 });
+        this.load.spritesheet('heloEnemy001', 'ss-helo-new-001.png', { frameWidth: 32, frameHeight: 16 });
+        this.load.spritesheet('explosion', 'explosion.png', { frameWidth: 32, frameHeight: 32 });
+        this.load.spritesheet('gunMantle', 'gun-mantle.png', { frameWidth: 32, frameHeight: 32 });
+        this.load.spritesheet('gunBarrel', 'gun-barrel.png', { frameWidth: 32, frameHeight: 32 });
+        this.load.spritesheet('gunMuzzleFlash', 'gun-muzzle-flash.png', { frameWidth: 16, frameHeight: 16 });
+        this.load.spritesheet('parachute', 'parachute.png', { frameWidth: 22, frameHeight: 15 });
+        this.load.spritesheet('paratrooper', 'paratrooper-test-004.png', { frameWidth: 24, frameHeight: 24 });
+        this.load.spritesheet('bloodyMess', 'bloody-mess.png', { frameWidth: 16, frameHeight: 16 });
+        this.load.spritesheet('airDebris', 'air-debris.png', { frameWidth: 32, frameHeight: 32 });
+        this.load.spritesheet('flamingMess', 'flaming-mess.png', { frameWidth: 16, frameHeight: 16 });
+        this.load.spritesheet('jet', 'jet.png', { frameWidth: 64, frameHeight: 16 });
+
+        // Load images
+        this.load.image('smokePuff', 'smoke-puff.png');
+        this.load.image('bomb', 'bomb.png');
+        this.load.image('testImage', 'muddy-ground.png');
+        this.load.image('ground2', 'ground-2.png');
+        this.load.image('bulletFriendly', 'bullet.png');
+        this.load.image('sea', 'sea.png');
+        this.load.image('bgTest', 'bg_vertical_004.png');
+        this.load.image('bgBlue001', 'bg_vertical_003.png');
+
+        // Load audio files with fallbacks
+        this.load.setPath('src/assets/audio');
+        this.load.audio('explosion1', ['Explosion1.ogg', 'Explosion1.mp3']);
+        this.load.audio('hit-parachute', ['hit-parachute.ogg', 'hit-parachute.mp3']);
+        this.load.audio('falling', ['falling.ogg', 'falling.mp3']);
+        this.load.audio('bassReverbClip', ['bass-reverb-clip.ogg', 'bass-reverb-clip.mp3']);
+        this.load.audio('thwack', ['thwack.ogg', 'thwack.mp3']);
+        this.load.audio('shoot1', ['shoot-01.ogg', 'shoot-01.mp3']);
+        this.load.audio('shoot2', ['shoot-02.ogg', 'shoot-02.mp3']);
+        this.load.audio('shoot3', ['shoot-03.ogg', 'shoot-03.mp3']);
+        this.load.audio('shoot4', ['shoot-04.ogg', 'shoot-04.mp3']);
     }
 
     create() {
-        //  When all the assets have loaded, it's often worth creating global objects here that the rest of the game can use.
-        //  For example, you can define global animations here, so we can use them in other scenes.
+        // Disable crop on preloader bar
+        this.preLoadBar.setCrop();
 
-        //  Move to the MainMenu. You could also swap this for a Scene Transition, such as a camera fade.
+        // Start the Game scene
         this.scene.start('Game');
     }
 }

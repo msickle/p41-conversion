@@ -4,25 +4,25 @@ import { Preloader } from './scenes/Preloader.js';
 
 // Game configuration
 const gameConfig = {
-    // Game dimensions
+    // Game dimensions (16:9-ish ratio for original Paratroopy game)
     dimensions: {
-        width: 1024,
-        height: 768,
+        width: 850,
+        height: 478,
     },
     // Visual settings
     colors: {
-        background: '#028af8',
+        background: '#042',
         primary: '#ffffff',
         accent: '#ff6b35',
     },
-    // Physics settings
+    // Physics settings (Arcade physics, no default gravity - handled per object)
     physics: {
-        gravity: { y: 500 },
+        gravity: { y: 0 },
         debug: false,
     },
     // Game settings
     game: {
-        title: 'Phaser Game Demo!!',
+        title: 'Paratroopy',
         version: '1.0.0',
         fps: 60,
     },

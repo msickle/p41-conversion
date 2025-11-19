@@ -1,3 +1,5 @@
+import { GameConfig } from '../config.js';
+
 export class Boot extends Phaser.Scene
 {
     constructor ()
@@ -5,11 +7,22 @@ export class Boot extends Phaser.Scene
         super('Boot');
     }
 
+    init ()
+    {
+        // Set input configuration
+        this.input.maxPointers = 1;
+
+        // Configure scale mode for mobile/desktop
+        // Phaser 3 handles this in the main config, but we can add responsive settings here if needed
+        
+        // Set global volume
+        this.sound.volume = GameConfig.GLOBAL_VOLUME;
+    }
+
     preload ()
     {
-        //  The Boot Scene is typically used to load in any assets you require for your Preloader, such as a game logo or background.
-        //  The smaller the file size of the assets, the better, as the Boot Scene itself has no preloader.
-
+        // Load the preloader bar asset for the Preloader scene
+        this.load.image('preloaderBar', 'src/assets/game/preloader-bar.png');
     }
 
     create ()

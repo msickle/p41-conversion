@@ -51,6 +51,9 @@ export class Game extends Phaser.Scene {
             this.bassReverbClip.play();
         }
         
+        // Setup event listeners for game objects
+        this.events.on('score', (data) => this.addToScore(data.amount));
+        
     }
 
     setupBackground() {
@@ -204,45 +207,22 @@ export class Game extends Phaser.Scene {
                 hideOnComplete: true
             });
         }
-        
-        // Create gore emitter for paratroopers using colored particles
-        // Create a simple red circle texture for gore particles
-        const goreGraphics = this.make.graphics({ x: 0, y: 0, add: false });
-        goreGraphics.fillStyle(0x8B0000, 1); // Dark red color
-        goreGraphics.fillCircle(4, 4, 4); // 8x8 circle
-        goreGraphics.generateTexture('goreParticle', 8, 8);
-        goreGraphics.destroy();
-        
-        this.goreEmitter = this.add.particles(0, 0, 'goreParticle', {
-            speed: { min: 40, max: 120 },
-            angle: { min: 0, max: 360 },
-            gravityY: 200,
-            scale: { start: 1.0, end: 0.3 },
-            alpha: { start: 1, end: 0.3 },
-            tint: [0x8B0000, 0xA52A2A, 0xDC143C, 0xB22222], // Various shades of red
-            lifespan: 600,
-            frequency: -1,
-            emitting: false
-        });
-        
-        // Set depth to ensure gore particles are visible above other sprites
-        this.goreEmitter.setDepth(10000);
-        
-        // Store in game state
-        this.gameState.flamePool = this.flamePool;
     }
 
     setupEnemies() {
-        // Paratrooper group (for collision detection only)
-        this.paratroopers = this.add.group({ runChildUpdate: true });
+        // Paratrooper group (for collision detection) - using physics group for better collision detection
+        this.paratroopers = this.physics.add.group({ runChildUpdate: true });
         
-        // Helicopter group (for collision detection only)
-        this.helicopters = this.add.group({ runChildUpdate: true });
+        // Parachute group (for collision detection)
+        this.parachutes = this.physics.add.group();
+        
+        // Helicopter group (for collision detection only) - using physics group
+        this.helicopters = this.physics.add.group({ runChildUpdate: true });
         this.nextHeloAt = 0;
         this.heloDelay = GameConfig.HELO_SPAWN_DELAY;
         
-        // Jet group (for collision detection only)
-        this.jets = this.add.group({ runChildUpdate: true });
+        // Jet group (for collision detection only) - using physics group
+        this.jets = this.physics.add.group({ runChildUpdate: true });
         this.nextJetAt = 4000;
         this.jetDelay = GameConfig.JET_SPAWN_DELAY;
         
@@ -555,243 +535,135 @@ export class Game extends Phaser.Scene {
     }
 
     checkCollisions() {
-        // Bullets vs enemies
-        this.physics.overlap(this.bullets, this.helicopters, this.enemyHit, null, this);
-        this.physics.overlap(this.bullets, this.paratroopers, this.enemyHit, null, this);
-        this.physics.overlap(this.bullets, this.jets, this.enemyHit, null, this);
-        this.physics.overlap(this.bullets, this.bombs, this.enemyHit, null, this);
-        
-        // Air debris collisions
-        this.physics.overlap(this.airDebris, this.helicopters, this.heloHitByDebris, null, this);
-        this.physics.overlap(this.airDebris, this.paratroopers, this.debrisHitPara, null, this);
-        this.physics.overlap(this.airDebris, this.player, this.debrisHitGround, null, this);
-        this.physics.overlap(this.airDebris, this.jets, this.heloHitByDebris, null, this);
-        
-        // Bombs and paratroopers
-        this.physics.overlap(this.paratroopers, this.bombs, this.enemyHit, null, this);
-        this.physics.overlap(this.player, this.bombs, this.hitGround, null, this);
-        
-        // Paratrooper collisions
-        this.physics.overlap(this.paratroopers, this.paratroopers, this.hitAnotherPara, null, this);
-        this.physics.overlap(this.player, this.paratroopers, this.hitGround, null, this);
-        
-        // Parachute collisions
-        this.paratroopers.children.entries.forEach(para => {
-            if (para.active && para.myChute && para.myChute.active) {
-                this.physics.overlap(this.bullets, para.myChute, this.parachuteHit, null, this);
-                this.physics.overlap(this.airDebris, para.myChute, this.parachuteHit, null, this);
-                this.physics.overlap(this.bombs, para.myChute, this.parachuteHit, null, this);
-            }
-        });
-    }
-
-    enemyHit(obj1, obj2) {
-        // Only process active objects
-        if (!obj1.active || !obj2.active) {
-            return;
-        }
-        
-        // Determine which is the bullet/projectile and which is the enemy
-        let bullet, enemy;
-        
-        if (obj1.texture.key === 'bulletFriendly' || obj1.texture.key === 'bomb') {
-            bullet = obj1;
-            enemy = obj2;
-        } else if (obj2.texture.key === 'bulletFriendly' || obj2.texture.key === 'bomb') {
-            bullet = obj2;
-            enemy = obj1;
-        } else {
-            // Neither is a projectile - shouldn't happen, but handle it
-            enemy = obj2;
-            bullet = obj1;
-        }
-        
-        // Handle projectile destruction/explosion
-        if (bullet.texture.key === 'bulletFriendly') {
+        // Bullets vs helicopters
+        this.physics.overlap(this.bullets, this.helicopters, (bullet, helo) => {
+            if (!bullet.active || !helo.active) return;
+            // Make sure the helo object has the method (it's a Helicopter instance)
+            if (typeof helo.onHitByBullet !== 'function') return;
             bullet.destroy();
-        } else if (bullet.texture.key === 'bomb') {
-            // Bombs explode when hitting anything
-            this.explode(bullet);
+            helo.onHitByBullet();
+        }, null, this);
+        
+        // Bullets vs jets
+        this.physics.overlap(this.bullets, this.jets, (bullet, jet) => {
+            if (!bullet.active || !jet.active) return;
+            // Make sure the jet object has the method (it's a Jet instance)
+            if (typeof jet.onHitByBullet !== 'function') return;
             bullet.destroy();
-        }
+            jet.onHitByBullet();
+        }, null, this);
         
-        if (enemy.texture.key === 'heloEnemy001') {
-            this.explode(enemy);
-            this.addToScore(enemy.reward);
-            enemy.kill();
-            return;
-        }
+        // Bullets vs paratroopers
+        this.physics.overlap(this.bullets, this.paratroopers, (bullet, para) => {
+            if (!bullet.active || !para.active) return;
+            // Make sure the para object has the method (it's a Paratrooper instance)
+            if (typeof para.onHitByBullet !== 'function') return;
+            bullet.destroy();
+            para.onHitByBullet();
+        }, null, this);
         
-        if (enemy.texture.key === 'jet') {
-            this.explode(enemy);
-            this.addToScore(enemy.reward);
-            enemy.kill();
-            return;
-        }
+        // Bullets vs bombs
+        this.physics.overlap(this.bullets, this.bombs, (bullet, bomb) => {
+            if (!bullet.active || !bomb.active) return;
+            // Make sure the bomb object has the method (it's a Bomb instance)
+            if (typeof bomb.onHitByBullet !== 'function') return;
+            bullet.destroy();
+            bomb.onHitByBullet();
+        }, null, this);
         
-        if (enemy.texture.key === 'bomb') {
-            this.explode(enemy);
-            this.addToScore(enemy.reward);
-            enemy.destroy();
-            return;
-        }
+        // Air debris vs helicopters
+        this.physics.overlap(this.airDebris, this.helicopters, (debris, helo) => {
+            if (!debris.active || !helo.active) return;
+            // Make sure both objects have the methods
+            if (typeof debris.onHitHelicopter !== 'function' || typeof helo.onHitByDebris !== 'function') return;
+            debris.onHitHelicopter(helo);
+        }, null, this);
         
-        if (enemy.texture.key === 'paratrooper') {
-            if (enemy.onGround) {
-                enemy.onGround = false;
-            }
-            if (enemy.myChute && enemy.myChute.active) {
-                enemy.killChute();
-            }
-            
-            this.spawnGore(enemy);
-            this.addToScore(enemy.reward);
-            enemy.kill();
-        }
-    }
-
-    heloHitByDebris(debris, enemy) {
-        // Only process active objects
-        if (!debris.active || !enemy.active) {
-            return;
-        }
+        // Air debris vs jets
+        this.physics.overlap(this.airDebris, this.jets, (debris, jet) => {
+            if (!debris.active || !jet.active) return;
+            // Make sure both objects have the methods
+            if (typeof debris.onHitJet !== 'function' || typeof jet.onHitByDebris !== 'function') return;
+            debris.onHitJet(jet);
+        }, null, this);
         
-        this.explode(enemy);
-        this.addToScore(enemy.reward * 2);
-        debris.kill();
-        enemy.kill();
-    }
-
-    parachuteHit(projectile, parachute) {
-        // Only process active objects
-        if (!projectile.active || !parachute.active) {
-            return;
-        }
+        // Air debris vs paratroopers
+        this.physics.overlap(this.airDebris, this.paratroopers, (debris, para) => {
+            if (!debris.active || !para.active) return;
+            // Make sure the para object has the method (it's a Paratrooper instance)
+            if (typeof para.onHitByDebris !== 'function') return;
+            debris.onHitParatrooper(para);
+        }, null, this);
         
-        if (parachute.texture.key === 'parachute' && parachute.parent) {
-            parachute.parent.killChute(true);
-            this.hitParachute.play();
-            this.addToScore(parachute.reward * 2);
-            
-            // Destroy or explode the projectile
-            if (projectile.texture.key === 'bulletFriendly') {
-                projectile.destroy();
-            } else if (projectile.texture.key === 'bomb') {
-                this.explode(projectile);
-                projectile.destroy();
-            } else if (projectile.texture.key === 'airDebris') {
-                // Air debris destroys chute and itself
-                projectile.kill();
-            }
-            return;
-        }
-    }
-
-    debrisHitPara(debris, target) {
-        // Only process active objects
-        if (!debris.active || !target.active) {
-            return;
-        }
-            this.spawnGore(target);
-            this.addToScore(target.reward * 2);
-            target.kill();
-            debris.kill(); // Destroy the debris that hit the paratrooper
-    }
-
-    debrisHitGround(player, debris) {
-        // Only process active debris
-        if (!debris || !debris.active) {
-            return;
-        }
+        // Air debris vs ground
+        this.physics.overlap(this.airDebris, this.player, (player, debris) => {
+            if (!debris.active) return;
+            // Make sure the debris object has the method
+            if (typeof debris.onHitGround !== 'function') return;
+            debris.onHitGround();
+        }, null, this);
         
-        if (debris.kill) {
+        // Bombs vs paratroopers
+        this.physics.overlap(this.paratroopers, this.bombs, (para, bomb) => {
+            if (!para.active || !bomb.active) return;
+            // Make sure the para object has the method (it's a Paratrooper instance)
+            if (typeof para.onHitByBomb !== 'function') return;
+            bomb.onHitEnemy(para);
+            para.onHitByBomb(bomb);
+        }, null, this);
+        
+        // Bombs vs ground
+        this.physics.overlap(this.player, this.bombs, (player, bomb) => {
+            if (!bomb.active) return;
+            // Make sure the bomb object has the method
+            if (typeof bomb.onHitGround !== 'function') return;
+            bomb.onHitGround();
+        }, null, this);
+        
+        // Paratrooper vs paratrooper collisions
+        this.physics.overlap(this.paratroopers, this.paratroopers, (para1, para2) => {
+            if (!para1.active || !para2.active || para1 === para2) return;
+            // Make sure both objects have the method (they're Paratrooper instances)
+            if (typeof para1.onCollideWithPara !== 'function' || typeof para2.onCollideWithPara !== 'function') return;
+            para1.onCollideWithPara(para2);
+        }, null, this);
+        
+        // Paratroopers vs ground
+        this.physics.overlap(this.player, this.paratroopers, (player, para) => {
+            if (!para.active) return;
+            // Make sure the para object has the method (it's a Paratrooper instance)
+            if (typeof para.hitGround !== 'function') return;
+            para.hitGround();
+        }, null, this);
+        
+        // Parachute collisions (using parachutes group)
+        // Bullets vs parachutes
+        this.physics.overlap(this.bullets, this.parachutes, (bullet, chute) => {
+            if (!bullet.active || !chute.active) return;
+            if (typeof chute.onHitByBullet !== 'function') return;
+            bullet.destroy();
+            chute.onHitByBullet();
+        }, null, this);
+        
+        // Air debris vs parachutes
+        this.physics.overlap(this.airDebris, this.parachutes, (debris, chute) => {
+            if (!debris.active || !chute.active) return;
+            if (typeof chute.onHitByDebris !== 'function') return;
             debris.kill();
-        } else if (debris.setActive) {
-            debris.setActive(false).setVisible(false);
-        }
-    }
-
-    hitGround(player, impactee) {
-        // Only process active objects
-        if (!impactee.active) {
-            return;
-        }
+            chute.onHitByDebris();
+        }, null, this);
         
-        if (impactee.texture.key === 'paratrooper') {
-            const landedSafe = impactee.hitGround();
-            
-            if (!landedSafe) {
-                this.thwack.play();
-                this.spawnGore({ x: impactee.x, y: impactee.y });
-                this.addToScore(impactee.reward * 2);
+        // Bombs vs parachutes
+        this.physics.overlap(this.bombs, this.parachutes, (bomb, chute) => {
+            if (!bomb.active || !chute.active) return;
+            if (typeof chute.onHitByBomb !== 'function') return;
+            if (typeof bomb.onHitEnemy === 'function') {
+                bomb.onHitEnemy(chute.parent);
             }
-            return;
-        }
-        
-        if (impactee.texture.key === 'bomb') {
-            // Store position before destroying
-            const bombX = impactee.x;
-            const bombY = impactee.y;
-            // Pass position object for explosion
-            this.explode({ x: bombX, y: bombY, texture: { key: 'bomb' }, body: null });
-            impactee.destroy();
-            return;
-        }
+            chute.onHitByBomb();
+        }, null, this);
     }
 
-    hitAnotherPara(para1, para2) {
-        // Only process active paratroopers
-        if (!para1.active || !para2.active || para1 === para2) {
-            return;
-        }
-        
-        if (!para1.onGround && !para2.onGround) {
-            para1.killChute(true);
-            para2.killChute(true);
-            return;
-        }
-        
-        if (para1.body.velocity.y > para1.downwardPull * 2 || 
-            para2.body.velocity.y > para2.downwardPull * 2) {
-            // Spawn gore for both paratroopers
-            this.spawnGore(para1);
-            this.spawnGore(para2);
-            
-            para1.kill();
-            para2.kill();
-            this.thwack.play();
-            this.addToScore(para1.reward * 4);
-        }
-    }
-
-    spawnGore(target) {
-        const particleCount = Phaser.Math.Between(7, 18);
-        this.goreEmitter.setPosition(target.x, target.y);
-        this.goreEmitter.explode(particleCount);
-        this.thwack.play();
-    }
-
-    explode(sprite) {
-        // Create explosion dynamically
-        const explosion = this.physics.add.sprite(sprite.x, sprite.y, 'explosion');
-        explosion.setOrigin(0.5, 0.5);
-        
-        // Play explosion animation
-        explosion.play('boom');
-        
-        // If the sprite has velocity (helicopter or jet), make explosion move with it
-        if (sprite.body && (sprite.texture.key === 'heloEnemy001' || sprite.texture.key === 'jet')) {
-            explosion.body.setVelocity(sprite.body.velocity.x, sprite.body.velocity.y);
-        }
-        
-        // Destroy explosion after animation completes
-        explosion.on('animationcomplete', () => {
-            explosion.destroy();
-        });
-        
-        // Play explosion sound
-        this.sfxExplosion001.play();
-    }
 
     processDelayedEffects() {
         if (this.instructions && this.instructions.visible && this.time.now > this.instructionsExpire) {

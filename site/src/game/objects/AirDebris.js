@@ -89,6 +89,35 @@ export class AirDebris extends Phaser.GameObjects.Sprite {
         }
     }
     
+    onHitHelicopter(helo) {
+        // Delegate to helicopter's debris hit handler
+        helo.onHitByDebris(this);
+        
+        // Destroy self
+        this.kill();
+    }
+    
+    onHitJet(jet) {
+        // Delegate to jet's debris hit handler
+        jet.onHitByDebris(this);
+        
+        // Destroy self
+        this.kill();
+    }
+    
+    onHitParatrooper(para) {
+        // Delegate to paratrooper's debris hit handler
+        para.onHitByDebris(this);
+        
+        // Destroy self
+        this.kill();
+    }
+    
+    onHitGround() {
+        // Just destroy self
+        this.kill();
+    }
+    
     kill() {
         this.destroy();
         return this;

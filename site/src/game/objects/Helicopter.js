@@ -63,8 +63,59 @@ export class Helicopter extends Phaser.GameObjects.Sprite {
         }
     }
     
-    kill() {
+    onHitByBullet() {
+        // Trigger explosion
+        this.explode();
+        
         // Spawn debris
+        this.spawnDebris();
+        
+        // Emit score event
+        this.scene.events.emit('score', { amount: this.reward });
+        
+        // Kill helicopter
+        this.kill();
+    }
+    
+    onHitByDebris(debris) {
+        // Trigger explosion
+        this.explode();
+        
+        // Spawn debris
+        this.spawnDebris();
+        
+        // Emit doubled score event
+        this.scene.events.emit('score', { amount: this.reward * 2 });
+        
+        // Kill helicopter
+        this.kill();
+    }
+    
+    explode() {
+        // Create explosion dynamically
+        const explosion = this.scene.physics.add.sprite(this.x, this.y, 'explosion');
+        explosion.setOrigin(0.5, 0.5);
+        
+        // Play explosion animation
+        explosion.play('boom');
+        
+        // Make explosion move with helicopter velocity
+        if (this.body) {
+            explosion.body.setVelocity(this.body.velocity.x, this.body.velocity.y);
+        }
+        
+        // Destroy explosion after animation completes
+        explosion.on('animationcomplete', () => {
+            explosion.destroy();
+        });
+        
+        // Play explosion sound
+        if (this.scene.sfxExplosion001) {
+            this.scene.sfxExplosion001.play();
+        }
+    }
+    
+    spawnDebris() {
         const spawnAmount = Phaser.Math.Between(0, GameConfig.AIR_DEBRIS_MAX_EVENT);
         
         for (let i = 0; i < spawnAmount; i++) {
@@ -72,7 +123,9 @@ export class Helicopter extends Phaser.GameObjects.Sprite {
             const debris = new AirDebris(this.scene, this.x, this.y);
             debris.addDebris(this.x, this.y, this.body.velocity.x, this.body.velocity.y, this.scene.airDebris);
         }
-        
+    }
+    
+    kill() {
         // Stop timer
         if (this.jumpTimer) {
             this.jumpTimer.remove();

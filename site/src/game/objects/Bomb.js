@@ -40,6 +40,54 @@ export class Bomb extends Phaser.GameObjects.Sprite {
         });
     }
     
+    onHitByBullet() {
+        // Trigger explosion at bomb position
+        this.explode();
+        
+        // Emit score event
+        this.scene.events.emit('score', { amount: this.reward });
+        
+        // Destroy bomb
+        this.destroy();
+    }
+    
+    onHitEnemy(enemy) {
+        // Trigger explosion at bomb position
+        this.explode();
+        
+        // Destroy bomb
+        this.destroy();
+    }
+    
+    onHitGround() {
+        // Trigger explosion at bomb position
+        this.explode();
+        
+        // Destroy bomb
+        this.destroy();
+    }
+    
+    explode() {
+        // Create explosion dynamically at bomb position
+        const explosion = this.scene.physics.add.sprite(this.x, this.y, 'explosion');
+        explosion.setOrigin(0.5, 0.5);
+        
+        // Play explosion animation
+        explosion.play('boom');
+        
+        // Bomb explosions don't inherit velocity (they're stationary)
+        
+        // Destroy explosion after animation completes
+        explosion.on('animationcomplete', () => {
+            explosion.destroy();
+        });
+        
+        // Play explosion sound
+        if (this.scene.sfxExplosion001) {
+            this.scene.sfxExplosion001.play();
+        }
+    }
+    
     kill() {
         // Destroy the bomb
         this.destroy();

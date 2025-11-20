@@ -29,7 +29,7 @@ export class Preloader extends Phaser.Scene {
 
     preload() {
         // Set base path for assets
-        this.load.setPath('src/assets/game');
+        this.load.setPath('src/game/assets/image');
 
         // Load sprite sheets
         this.load.spritesheet('heloEnemy001', 'ss-helo-new-001.png', { frameWidth: 32, frameHeight: 16 });
@@ -54,7 +54,7 @@ export class Preloader extends Phaser.Scene {
         this.load.image('bgBlue001', 'bg_vertical_003.png');
 
         // Load audio files with fallbacks
-        this.load.setPath('src/assets/audio');
+        this.load.setPath('src/game/assets/audio');
         this.load.audio('explosion1', ['Explosion1.ogg', 'Explosion1.mp3']);
         this.load.audio('hit-parachute', ['hit-parachute.ogg', 'hit-parachute.mp3']);
         this.load.audio('falling', ['falling.ogg', 'falling.mp3']);

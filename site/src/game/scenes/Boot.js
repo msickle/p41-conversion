@@ -22,7 +22,7 @@ export class Boot extends Phaser.Scene
     preload ()
     {
         // Load the preloader bar asset for the Preloader scene
-        this.load.image('preloaderBar', 'src/assets/game/preloader-bar.png');
+        this.load.image('preloaderBar', 'src/game/assets/image/preloader-bar.png');
     }
 
     create ()

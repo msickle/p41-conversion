@@ -1,28 +1,16 @@
 ---
 alwaysApply: true
 ---
+# Cursor Rules
 
-# Project Rules
+## Project Guidelines
 
-## Original Game
-- `/p41` contains a complete, running Phaser demo game that is very old
-- This folder should only ever be used as a reference or a source, never changed
+Purpose: To create games in PhaserJS.
 
-## New Game
-- `/p41-conversion-working` is the folder for a new version of the old game
-- It uses Phaser version 3.90 (included in the site assets - do not change)
-- It starts with a demo game called snake
-- All work should be done in the `site/game/` folder only
+Agent restrictions:  
+-Do not evaluate the /.reference folder unless a file is added to chat as context.
+-Do not change anything outside of the /site/src/game folder unless asked to.
 
-## Common Technology
-- Phaser is the common ground
-- Game files are originally in JS, keep it that way for now (overrides lower level rules but that is ok for this time)
+Language: TypeScript, JavaScript ES6
 
-## Goal
-- At the end of this project, `/p41-conversion-working` will contain a complete, running game demo
-  - It will contain all features of the old game
-  - The layout size and assets may be changed
-- The web site build and structure will not have changed
-
-## Starting Process
-- Begin bringing over one part of the old game at a time
+To-Do List: TODO.md is where issues can be preserved for future attention.

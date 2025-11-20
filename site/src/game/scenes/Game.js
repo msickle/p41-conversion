@@ -1,9 +1,6 @@
 import { GameConfig } from '../config.js';
-import { Paratrooper } from '../objects/Paratrooper.js';
 import { Helicopter } from '../objects/Helicopter.js';
 import { Jet } from '../objects/Jet.js';
-import { AirDebris } from '../objects/AirDebris.js';
-import { FlameEmitter } from '../objects/FlameEmitter.js';
 
 export class Game extends Phaser.Scene {
     constructor() {

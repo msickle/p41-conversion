@@ -38,19 +38,19 @@ export class Paratrooper extends Phaser.GameObjects.Sprite {
         this.body.setCollideWorldBounds(false);
         this.body.checkWorldBounds = true;
         this.body.onWorldBounds = true;
-        
-        // Listen for leaving world bounds
-        scene.physics.world.on('worldbounds', (body) => {
-            if (body.gameObject === this) {
-                this.kill();
-            }
-        });
     }
     
     jump() {
         this.jumped = true;
         this.onGround = false;
         this.chuteDestroyed = false;
+        
+        // Ensure physics body is enabled
+        if (this.body) {
+            this.body.enable = true;
+            // Ensure body size is set correctly
+            this.body.setSize(this.width, this.height);
+        }
         
         this.body.setVelocityY(GameConfig.TERMINAL_VELOCITY);
         
@@ -62,6 +62,14 @@ export class Paratrooper extends Phaser.GameObjects.Sprite {
     deployChute() {
         this.myChute.setActive(true).setVisible(true);
         this.myChute.setPosition(this.x, this.y - 8);
+        
+        // Ensure parachute physics body is enabled
+        if (this.myChute.body) {
+            this.myChute.body.enable = true;
+            // Set body size to match sprite
+            this.myChute.body.setSize(this.myChute.width, this.myChute.height);
+        }
+        
         this.deployedChute = true;
         this.body.setVelocityY(this.downwardPull);
         this.body.setDragX(10);
@@ -118,8 +126,17 @@ export class Paratrooper extends Phaser.GameObjects.Sprite {
     preUpdate(time, delta) {
         super.preUpdate(time, delta);
         
+        // Check if out of world bounds (paratroopers fall down, so check Y too)
+        if (this.active && (
+            this.x < -50 || 
+            this.x > this.scene.game.config.width + 50 ||
+            this.y > this.scene.game.config.height + 50
+        )) {
+            this.kill();
+        }
+        
         // Update chute position to follow paratrooper
-        if (this.myChute.active) {
+        if (this.myChute && this.myChute.active) {
             this.myChute.setPosition(this.x, this.y - 8);
         }
     }

@@ -27,9 +27,15 @@ export class Game extends Phaser.Scene {
         this.fireKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.Z);
         this.quitKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.Q);
         this.pauseKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.P);
+        this.hitboxKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.H);
         
         // Pause state
         this.isPaused = false;
+        
+        // Hitbox debug state
+        this.showHitboxes = false;
+        this.hitboxGraphics = this.add.graphics();
+        this.hitboxGraphics.setDepth(100000); // Always on top
         
         // Setup game systems
         this.setupBackground();
@@ -267,6 +273,80 @@ export class Game extends Phaser.Scene {
         ];
     }
 
+    drawHitboxes() {
+        // Clear previous frame
+        this.hitboxGraphics.clear();
+        
+        // Set line style: green, 2px width
+        this.hitboxGraphics.lineStyle(2, 0x00ff00, 1);
+        
+        // Helper function to draw a body's hitbox
+        const drawBody = (sprite, body) => {
+            if (!body || !body.enable) return;
+            
+            // Use body's actual bounds properties (these are world coordinates)
+            const left = body.left;
+            const top = body.top;
+            const width = body.width;
+            const height = body.height;
+            
+            // Draw rectangle using body bounds
+            this.hitboxGraphics.strokeRect(left, top, width, height);
+        };
+        
+        // Draw hitboxes for bullets
+        this.bullets.children.entries.forEach(bullet => {
+            if (bullet.active && bullet.body) {
+                drawBody(bullet, bullet.body);
+            }
+        });
+        
+        // Draw hitboxes for helicopters
+        this.helicopters.children.entries.forEach(helo => {
+            if (helo.active && helo.body) {
+                drawBody(helo, helo.body);
+            }
+        });
+        
+        // Draw hitboxes for jets
+        this.jets.children.entries.forEach(jet => {
+            if (jet.active && jet.body) {
+                drawBody(jet, jet.body);
+            }
+        });
+        
+        // Draw hitboxes for paratroopers
+        this.paratroopers.children.entries.forEach(para => {
+            if (para.active && para.body) {
+                drawBody(para, para.body);
+            }
+            
+            // Draw hitbox for parachute if active
+            if (para.myChute && para.myChute.active && para.myChute.body) {
+                drawBody(para.myChute, para.myChute.body);
+            }
+        });
+        
+        // Draw hitboxes for bombs
+        this.bombs.children.entries.forEach(bomb => {
+            if (bomb.active && bomb.body) {
+                drawBody(bomb, bomb.body);
+            }
+        });
+        
+        // Draw hitboxes for air debris
+        this.airDebris.children.entries.forEach(debris => {
+            if (debris.active && debris.body) {
+                drawBody(debris, debris.body);
+            }
+        });
+        
+        // Draw hitbox for player gun (if it has a body)
+        if (this.player && this.player.body) {
+            drawBody(this.player, this.player.body);
+        }
+    }
+
     update(time, delta) {
         // Handle pause toggle
         if (Phaser.Input.Keyboard.JustDown(this.pauseKey)) {
@@ -282,9 +362,25 @@ export class Game extends Phaser.Scene {
             }
         }
         
+        // Handle hitbox debug toggle
+        if (Phaser.Input.Keyboard.JustDown(this.hitboxKey)) {
+            this.showHitboxes = !this.showHitboxes;
+            this.hitboxGraphics.clear();
+            if (!this.showHitboxes) {
+                console.log('[DEBUG] Hitboxes hidden');
+            } else {
+                console.log('[DEBUG] Hitboxes shown');
+            }
+        }
+        
         // If paused, don't update anything else
         if (this.isPaused) {
             return;
+        }
+        
+        // Draw hitboxes if enabled
+        if (this.showHitboxes) {
+            this.drawHitboxes();
         }
         
         // Scroll background
@@ -325,6 +421,18 @@ export class Game extends Phaser.Scene {
         // Process delayed effects
         this.processDelayedEffects();
         
+        // Clean up bullets that are out of bounds
+        this.bullets.children.entries.forEach(bullet => {
+            if (bullet.active && (
+                bullet.x < -50 || 
+                bullet.x > this.game.config.width + 50 ||
+                bullet.y < -50 || 
+                bullet.y > this.game.config.height + 50
+            )) {
+                bullet.destroy();
+            }
+        });
+        
         // Check collisions
         this.checkCollisions();
     }
@@ -353,15 +461,8 @@ export class Game extends Phaser.Scene {
         const bullet = this.physics.add.sprite(0, 0, 'bulletFriendly');
         bullet.setOrigin(0.5, 0.5);
         bullet.body.setCollideWorldBounds(false);
-        bullet.body.onWorldBounds = true;
+        bullet.body.checkWorldBounds = true;
         this.bullets.add(bullet);
-        
-        // Destroy bullet when it leaves world bounds
-        bullet.body.world.on('worldbounds', (body) => {
-            if (body.gameObject === bullet) {
-                bullet.destroy();
-            }
-        });
         
         // Calculate bullet starting position and velocity
         const gunAngle = this.gunBarrel.angle - 90;
@@ -420,11 +521,11 @@ export class Game extends Phaser.Scene {
             if (coinFlip > 5) {
                 helo.setPosition(0, Phaser.Math.Between(20, 200));
                 helo.body.setVelocityX(Phaser.Math.Between(30, 60));
-                helo.setScale(1, 1);
+                helo.setFlipX(false);
             } else {
                 helo.setPosition(this.game.config.width + 10, Phaser.Math.Between(20, 200));
                 helo.body.setVelocityX(-Phaser.Math.Between(30, 60));
-                helo.setScale(-1, 1);
+                helo.setFlipX(true);
             }
             
             helo.spawnHelo(this.paratroopers);
@@ -443,11 +544,11 @@ export class Game extends Phaser.Scene {
             if (coinFlip > 5) {
                 jet.setPosition(0, Phaser.Math.Between(20, 90));
                 jet.body.setVelocityX(Phaser.Math.Between(60, 100));
-                jet.setScale(1, 1);
+                jet.setFlipX(false);
             } else {
                 jet.setPosition(this.game.config.width + 10, Phaser.Math.Between(20, 90));
                 jet.body.setVelocityX(-Phaser.Math.Between(60, 100));
-                jet.setScale(-1, 1);
+                jet.setFlipX(true);
             }
             
             jet.spawnJet(this.bombs);
@@ -580,7 +681,8 @@ export class Game extends Phaser.Scene {
                 this.explode(projectile);
                 projectile.destroy();
             } else if (projectile.texture.key === 'airDebris') {
-                // Air debris just passes through
+                // Air debris destroys chute and itself
+                projectile.kill();
             }
             return;
         }
@@ -596,10 +698,7 @@ export class Game extends Phaser.Scene {
             this.spawnGore(target);
             this.addToScore(target.reward * 2);
             target.kill();
-        }
-        if (target.texture.key === 'parachute' && target.parent) {
-            target.parent.killChute(true);
-            return;
+            debris.kill(); // Destroy the debris that hit the paratrooper
         }
     }
 

@@ -67,6 +67,16 @@ export class FlameEmitter extends Phaser.GameObjects.Sprite {
     preUpdate(time, delta) {
         super.preUpdate(time, delta);
         
+        // Check if out of world bounds (flames fall down, so check Y too)
+        if (this.active && (
+            this.x < -50 || 
+            this.x > this.scene.game.config.width + 50 ||
+            this.y > this.scene.game.config.height + 50
+        )) {
+            this.kill();
+            return;
+        }
+        
         // Update emitter position to follow sprite
         if (this.active && this.flameEmitter) {
             this.flameEmitter.setPosition(this.x, this.y);

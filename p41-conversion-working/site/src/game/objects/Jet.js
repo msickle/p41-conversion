@@ -13,19 +13,15 @@ export class Jet extends Phaser.GameObjects.Sprite {
         // Set origin
         this.setOrigin(0.5, 0.5);
         
+        // Set physics body size to match sprite
+        this.body.setSize(this.width, this.height);
+        
         // Set reward
         this.reward = GameConfig.JET_REWARD;
         
         // Set bounds checking
         this.body.checkWorldBounds = true;
         this.body.onWorldBounds = true;
-        
-        // Listen for leaving world bounds
-        scene.physics.world.on('worldbounds', (body) => {
-            if (body.gameObject === this) {
-                this.kill();
-            }
-        });
     }
     
     spawnJet(bombsGroup) {
@@ -47,7 +43,9 @@ export class Jet extends Phaser.GameObjects.Sprite {
             this.bombsGroup.add(bomb);
             
             // Drop the bomb with jet's velocity
-            bomb.drop(this.x, this.y, this.body.velocity.x, this.scaleX);
+            // Convert flipX to scaleX value (-1 if flipped, 1 if not)
+            const scaleX = this.flipX ? -1 : 1;
+            bomb.drop(this.x, this.y, this.body.velocity.x, scaleX);
         }
     }
     
@@ -75,6 +73,11 @@ export class Jet extends Phaser.GameObjects.Sprite {
     
     preUpdate(time, delta) {
         super.preUpdate(time, delta);
+        
+        // Check if out of world bounds
+        if (this.active && (this.x < -50 || this.x > this.scene.game.config.width + 50)) {
+            this.kill();
+        }
     }
 }
 

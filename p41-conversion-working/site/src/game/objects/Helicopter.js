@@ -13,8 +13,11 @@ export class Helicopter extends Phaser.GameObjects.Sprite {
         // Set origin
         this.setOrigin(0.5, 0.5);
         
+        // Set physics body size to match sprite
+        this.body.setSize(this.width, this.height);
+        
         // Spawn timing
-        this.paraSpawnDelay = Phaser.Math.Between(1200, 3200);
+        this.paraSpawnDelay = Phaser.Math.Between(4200, 6200);
         this.nextParatrooperSpawn = 0;
         
         // Set reward
@@ -23,13 +26,6 @@ export class Helicopter extends Phaser.GameObjects.Sprite {
         // Set bounds checking
         this.body.checkWorldBounds = true;
         this.body.onWorldBounds = true;
-        
-        // Listen for leaving world bounds
-        scene.physics.world.on('worldbounds', (body) => {
-            if (body.gameObject === this) {
-                this.kill();
-            }
-        });
         
         // Create animation
         if (!scene.anims.exists('helo_fly')) {
@@ -50,7 +46,7 @@ export class Helicopter extends Phaser.GameObjects.Sprite {
         this.paratroopersGroup = paratroopersGroup;
         
         // Set up timer to spawn paratroopers
-        const timerValue = Phaser.Math.Between(1500, 3000);
+        const timerValue = Phaser.Math.Between(1500, 6000);
         
         this.jumpTimer = this.scene.time.addEvent({
             delay: timerValue,
@@ -95,6 +91,11 @@ export class Helicopter extends Phaser.GameObjects.Sprite {
     
     preUpdate(time, delta) {
         super.preUpdate(time, delta);
+        
+        // Check if out of world bounds
+        if (this.active && (this.x < -50 || this.x > this.scene.game.config.width + 50)) {
+            this.kill();
+        }
     }
 }
 

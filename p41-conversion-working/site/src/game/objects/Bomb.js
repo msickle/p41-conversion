@@ -17,13 +17,6 @@ export class Bomb extends Phaser.GameObjects.Sprite {
         // Set bounds checking
         this.body.checkWorldBounds = true;
         this.body.onWorldBounds = true;
-        
-        // Listen for leaving world bounds
-        scene.physics.world.on('worldbounds', (body) => {
-            if (body.gameObject === this) {
-                this.kill();
-            }
-        });
     }
     
     drop(jetX, jetY, jetVelocityX, jetScaleX) {
@@ -56,6 +49,15 @@ export class Bomb extends Phaser.GameObjects.Sprite {
     
     preUpdate(time, delta) {
         super.preUpdate(time, delta);
+        
+        // Check if out of world bounds (bombs fall down, so check Y too)
+        if (this.active && (
+            this.x < -50 || 
+            this.x > this.scene.game.config.width + 50 ||
+            this.y > this.scene.game.config.height + 50
+        )) {
+            this.kill();
+        }
     }
 }
 

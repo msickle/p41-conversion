@@ -26,6 +26,10 @@ export class Game extends Phaser.Scene {
         this.cursors = this.input.keyboard.createCursorKeys();
         this.fireKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.Z);
         this.quitKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.Q);
+        this.pauseKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.P);
+        
+        // Pause state
+        this.isPaused = false;
         
         // Setup game systems
         this.setupBackground();
@@ -43,6 +47,7 @@ export class Game extends Phaser.Scene {
         if (this.bassReverbClip) {
             this.bassReverbClip.play();
         }
+        
     }
 
     setupBackground() {
@@ -83,6 +88,17 @@ export class Game extends Phaser.Scene {
             { font: '14px monospace', fill: '#eed', align: 'center' }
         );
         this.scoreText.setOrigin(0.5, 0.5);
+        
+        // Pause text
+        this.pauseText = this.add.text(
+            centerX,
+            centerY,
+            'PAUSED\n\nPress P to resume',
+            { font: '24px monospace', fill: '#fff', align: 'center' }
+        );
+        this.pauseText.setOrigin(0.5, 0.5);
+        this.pauseText.setVisible(false);
+        this.pauseText.setDepth(10000);
     }
 
     addToScore(reward) {
@@ -144,9 +160,10 @@ export class Game extends Phaser.Scene {
         }
         
         // Create muzzle smoke particles (positioned at barrel tip during firing)
+        // Note: Particles should drift upward independently of gun rotation
         this.muzzleSmoke = this.add.particles(0, 0, 'smokePuff', {
-            speed: { min: -20, max: 20 },
-            speedY: { min: -3, max: -20 },
+            speed: { min: 10, max: 30 },
+            angle: { min: 260, max: 280 }, // Mostly upward
             gravityY: -200,
             scale: { start: 0.1, end: 0.3 },
             alpha: { start: 1, end: 0.1 },
@@ -165,174 +182,72 @@ export class Game extends Phaser.Scene {
     }
 
     setupBullets() {
-        // Create bullet pool
-        this.bulletPool = this.physics.add.group({
-            defaultKey: 'bulletFriendly',
-            maxSize: GameConfig.FRIENDLY_BULLET_POOL_SIZE,
-            runChildUpdate: false
-        });
-        
-        // Create bullets
-        for (let i = 0; i < GameConfig.FRIENDLY_BULLET_POOL_SIZE; i++) {
-            const bullet = this.bulletPool.create(0, 0, 'bulletFriendly');
-            bullet.setActive(false);
-            bullet.setVisible(false);
-            bullet.setOrigin(0.5, 0.5);
-            bullet.body.checkWorldBounds = true;
-            bullet.body.onWorldBounds = true;
-        }
-        
-        // Listen for bullets leaving world bounds
-        this.physics.world.on('worldbounds', (body) => {
-            if (this.bulletPool.contains(body.gameObject)) {
-                body.gameObject.setActive(false).setVisible(false);
-            }
-        });
+        // Create group to hold bullets (for collision detection)
+        this.bullets = this.physics.add.group();
         
         // Shot timing
         this.nextShotAt = 0;
         this.shotDelay = GameConfig.SHOT_DELAY;
-        
-        // Store in game state
-        this.gameState.bulletPool = this.bulletPool;
     }
 
     setupPyro() {
-        // Create explosion pool
-        this.explosionPool = this.physics.add.group({
-            defaultKey: 'explosion',
-            maxSize: GameConfig.EXPLOSION_POOL_SIZE,
-            runChildUpdate: false
-        });
-        
         // Create explosion animation
         if (!this.anims.exists('boom')) {
             this.anims.create({
                 key: 'boom',
                 frames: this.anims.generateFrameNumbers('explosion', { start: 0, end: 2 }),
                 frameRate: 15,
+                repeat: 0,
                 hideOnComplete: true
             });
         }
         
-        for (let i = 0; i < GameConfig.EXPLOSION_POOL_SIZE; i++) {
-            const explosion = this.explosionPool.create(0, 0, 'explosion');
-            explosion.setActive(false);
-            explosion.setVisible(false);
-            explosion.setOrigin(0.5, 0.5);
-            explosion.body.checkWorldBounds = true;
-            explosion.body.onWorldBounds = true;
-            explosion.on('animationcomplete', () => {
-                explosion.setActive(false).setVisible(false);
-            });
-        }
+        // Create gore emitter for paratroopers using colored particles
+        // Create a simple red circle texture for gore particles
+        const goreGraphics = this.make.graphics({ x: 0, y: 0, add: false });
+        goreGraphics.fillStyle(0x8B0000, 1); // Dark red color
+        goreGraphics.fillCircle(4, 4, 4); // 8x8 circle
+        goreGraphics.generateTexture('goreParticle', 8, 8);
+        goreGraphics.destroy();
         
-        // Create flame pool
-        this.flamePool = this.add.group({
-            classType: FlameEmitter,
-            maxSize: GameConfig.AIR_DEBRIS_SPAWN_TOTAL,
-            runChildUpdate: true
-        });
-        
-        for (let i = 0; i < GameConfig.AIR_DEBRIS_SPAWN_TOTAL; i++) {
-            const flame = new FlameEmitter(this, 0, 0);
-            this.flamePool.add(flame);
-        }
-        
-        // Create gore emitter for paratroopers
-        this.goreEmitter = this.add.particles(0, 0, 'bloodyMess', {
-            frame: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
-            speed: { min: -40, max: 40 },
-            gravityY: 0,
-            scale: { start: 0.2, end: 0.05 },
-            alpha: { start: 1, end: 0.6 },
-            lifespan: 500,
+        this.goreEmitter = this.add.particles(0, 0, 'goreParticle', {
+            speed: { min: 40, max: 120 },
+            angle: { min: 0, max: 360 },
+            gravityY: 200,
+            scale: { start: 1.0, end: 0.3 },
+            alpha: { start: 1, end: 0.3 },
+            tint: [0x8B0000, 0xA52A2A, 0xDC143C, 0xB22222], // Various shades of red
+            lifespan: 600,
             frequency: -1,
             emitting: false
         });
+        
+        // Set depth to ensure gore particles are visible above other sprites
+        this.goreEmitter.setDepth(10000);
         
         // Store in game state
         this.gameState.flamePool = this.flamePool;
     }
 
     setupEnemies() {
-        // Paratrooper pool
-        this.paraPool = this.add.group({
-            classType: Paratrooper,
-            maxSize: GameConfig.PARA_SPAWN_TOTAL,
-            runChildUpdate: true
-        });
+        // Paratrooper group (for collision detection only)
+        this.paratroopers = this.add.group({ runChildUpdate: true });
         
-        for (let i = 0; i < GameConfig.PARA_SPAWN_TOTAL; i++) {
-            const para = new Paratrooper(this, 100, 100);
-            this.paraPool.add(para);
-            para.setActive(false).setVisible(false);
-        }
-        
-        // Helicopter pool
-        this.heloPool = this.add.group({
-            classType: Helicopter,
-            maxSize: GameConfig.HELO_SPAWN_TOTAL,
-            runChildUpdate: true
-        });
-        
-        for (let i = 0; i < GameConfig.HELO_SPAWN_TOTAL; i++) {
-            const helo = new Helicopter(this, 0, 0);
-            this.heloPool.add(helo);
-            helo.setActive(false).setVisible(false);
-        }
-        
+        // Helicopter group (for collision detection only)
+        this.helicopters = this.add.group({ runChildUpdate: true });
         this.nextHeloAt = 0;
         this.heloDelay = GameConfig.HELO_SPAWN_DELAY;
         
-        // Jet pool
-        this.jetPool = this.add.group({
-            classType: Jet,
-            maxSize: GameConfig.JET_SPAWN_TOTAL,
-            runChildUpdate: true
-        });
-        
-        for (let i = 0; i < GameConfig.JET_SPAWN_TOTAL; i++) {
-            const jet = new Jet(this, 0, 0);
-            this.jetPool.add(jet);
-            jet.setActive(false).setVisible(false);
-        }
-        
+        // Jet group (for collision detection only)
+        this.jets = this.add.group({ runChildUpdate: true });
         this.nextJetAt = 4000;
         this.jetDelay = GameConfig.JET_SPAWN_DELAY;
         
-        // Bomb pool
-        this.bombPool = this.physics.add.group({
-            defaultKey: 'bomb',
-            maxSize: GameConfig.BOMB_SPAWN_TOTAL,
-            runChildUpdate: false
-        });
+        // Bomb group (for collision detection only)
+        this.bombs = this.physics.add.group();
         
-        for (let i = 0; i < GameConfig.BOMB_SPAWN_TOTAL; i++) {
-            const bomb = this.bombPool.create(0, 0, 'bomb');
-            bomb.setActive(false);
-            bomb.setVisible(false);
-            bomb.setOrigin(0.5, 0.5);
-            bomb.body.checkWorldBounds = true;
-            bomb.body.onWorldBounds = true;
-            bomb.reward = GameConfig.BOMB_REWARD;
-        }
-        
-        // Air debris pool
-        this.airDebrisPool = this.add.group({
-            classType: AirDebris,
-            maxSize: GameConfig.AIR_DEBRIS_SPAWN_TOTAL,
-            runChildUpdate: true
-        });
-        
-        for (let i = 0; i < GameConfig.AIR_DEBRIS_SPAWN_TOTAL; i++) {
-            const debris = new AirDebris(this, 0, 0);
-            this.airDebrisPool.add(debris);
-        }
-        
-        // Store in game state
-        this.gameState.airDebrisPool = this.airDebrisPool;
-        this.gameState.flamePool = this.flamePool;
+        // Air debris group (for collision detection only)
+        this.airDebris = this.physics.add.group();
     }
 
     setupAudio() {
@@ -353,6 +268,25 @@ export class Game extends Phaser.Scene {
     }
 
     update(time, delta) {
+        // Handle pause toggle
+        if (Phaser.Input.Keyboard.JustDown(this.pauseKey)) {
+            this.isPaused = !this.isPaused;
+            this.pauseText.setVisible(this.isPaused);
+            
+            if (this.isPaused) {
+                console.log('[GAME] PAUSED - Press P to resume');
+                this.physics.pause();
+            } else {
+                console.log('[GAME] RESUMED');
+                this.physics.resume();
+            }
+        }
+        
+        // If paused, don't update anything else
+        if (this.isPaused) {
+            return;
+        }
+        
         // Scroll background
         this.sky.tilePositionY -= this.skyScrollSpeed * (delta / 1000);
         
@@ -413,12 +347,21 @@ export class Game extends Phaser.Scene {
             return;
         }
         
-        const bullet = this.bulletPool.getFirstDead();
-        if (!bullet) {
-            return;
-        }
-        
         this.nextShotAt = this.time.now + this.shotDelay;
+        
+        // Create new bullet dynamically
+        const bullet = this.physics.add.sprite(0, 0, 'bulletFriendly');
+        bullet.setOrigin(0.5, 0.5);
+        bullet.body.setCollideWorldBounds(false);
+        bullet.body.onWorldBounds = true;
+        this.bullets.add(bullet);
+        
+        // Destroy bullet when it leaves world bounds
+        bullet.body.world.on('worldbounds', (body) => {
+            if (body.gameObject === bullet) {
+                bullet.destroy();
+            }
+        });
         
         // Calculate bullet starting position and velocity
         const gunAngle = this.gunBarrel.angle - 90;
@@ -454,6 +397,7 @@ export class Game extends Phaser.Scene {
         const smokeX = this.gunBarrel.x + Math.cos(gunAngleRads) * smokeBarrelLength;
         const smokeY = this.gunBarrel.y + Math.sin(gunAngleRads) * smokeBarrelLength;
         this.muzzleSmoke.setPosition(smokeX, smokeY);
+        this.muzzleSmoke.setAngle(0); // Ensure emitter itself isn't rotated
         this.muzzleSmoke.explode(4);
         
         // Play gunshot sound
@@ -464,87 +408,108 @@ export class Game extends Phaser.Scene {
     spawnEnemies() {
         // Spawn helicopters
         if (this.nextHeloAt < this.time.now) {
-            const enemy = this.heloPool.getFirstDead();
+            this.nextHeloAt = this.time.now + this.heloDelay;
             
-            if (enemy) {
-                this.nextHeloAt = this.time.now + this.heloDelay;
-                
-                const coinFlip = Phaser.Math.Between(0, 9);
-                
-                if (coinFlip > 5) {
-                    enemy.setActive(true).setVisible(true);
-                    enemy.setPosition(0, Phaser.Math.Between(20, 200));
-                    enemy.body.setVelocityX(Phaser.Math.Between(30, 60));
-                    enemy.setScale(1, 1);
-                } else {
-                    enemy.setActive(true).setVisible(true);
-                    enemy.setPosition(this.game.config.width + 10, Phaser.Math.Between(20, 200));
-                    enemy.body.setVelocityX(-Phaser.Math.Between(30, 60));
-                    enemy.setScale(-1, 1);
-                }
-                
-                enemy.spawnHelo(this.paraPool);
+            const coinFlip = Phaser.Math.Between(0, 9);
+            
+            // Create helicopter dynamically
+            const helo = new Helicopter(this, 0, 0);
+            this.helicopters.add(helo);
+            
+            if (coinFlip > 5) {
+                helo.setPosition(0, Phaser.Math.Between(20, 200));
+                helo.body.setVelocityX(Phaser.Math.Between(30, 60));
+                helo.setScale(1, 1);
+            } else {
+                helo.setPosition(this.game.config.width + 10, Phaser.Math.Between(20, 200));
+                helo.body.setVelocityX(-Phaser.Math.Between(30, 60));
+                helo.setScale(-1, 1);
             }
+            
+            helo.spawnHelo(this.paratroopers);
         }
         
         // Spawn jets
         if (this.nextJetAt < this.time.now) {
-            const enemy = this.jetPool.getFirstDead();
+            this.nextJetAt = this.time.now + this.jetDelay;
             
-            if (enemy) {
-                this.nextJetAt = this.time.now + this.jetDelay;
-                
-                const coinFlip = Phaser.Math.Between(0, 9);
-                
-                if (coinFlip > 5) {
-                    enemy.setActive(true).setVisible(true);
-                    enemy.setPosition(0, Phaser.Math.Between(20, 90));
-                    enemy.body.setVelocityX(Phaser.Math.Between(60, 100));
-                    enemy.setScale(1, 1);
-                } else {
-                    enemy.setActive(true).setVisible(true);
-                    enemy.setPosition(this.game.config.width + 10, Phaser.Math.Between(20, 90));
-                    enemy.body.setVelocityX(-Phaser.Math.Between(60, 100));
-                    enemy.setScale(-1, 1);
-                }
-                
-                enemy.spawnJet(this.bombPool);
+            const coinFlip = Phaser.Math.Between(0, 9);
+            
+            // Create jet dynamically
+            const jet = new Jet(this, 0, 0);
+            this.jets.add(jet);
+            
+            if (coinFlip > 5) {
+                jet.setPosition(0, Phaser.Math.Between(20, 90));
+                jet.body.setVelocityX(Phaser.Math.Between(60, 100));
+                jet.setScale(1, 1);
+            } else {
+                jet.setPosition(this.game.config.width + 10, Phaser.Math.Between(20, 90));
+                jet.body.setVelocityX(-Phaser.Math.Between(60, 100));
+                jet.setScale(-1, 1);
             }
+            
+            jet.spawnJet(this.bombs);
         }
     }
 
     checkCollisions() {
         // Bullets vs enemies
-        this.physics.overlap(this.bulletPool, this.heloPool, this.enemyHit, null, this);
-        this.physics.overlap(this.bulletPool, this.paraPool, this.enemyHit, null, this);
-        this.physics.overlap(this.bulletPool, this.jetPool, this.enemyHit, null, this);
-        this.physics.overlap(this.bulletPool, this.bombPool, this.enemyHit, null, this);
+        this.physics.overlap(this.bullets, this.helicopters, this.enemyHit, null, this);
+        this.physics.overlap(this.bullets, this.paratroopers, this.enemyHit, null, this);
+        this.physics.overlap(this.bullets, this.jets, this.enemyHit, null, this);
+        this.physics.overlap(this.bullets, this.bombs, this.enemyHit, null, this);
         
         // Air debris collisions
-        this.physics.overlap(this.airDebrisPool, this.heloPool, this.heloHitByDebris, null, this);
-        this.physics.overlap(this.airDebrisPool, this.paraPool, this.debrisHitPara, null, this);
-        this.physics.overlap(this.airDebrisPool, this.player, this.debrisHitGround, null, this);
-        this.physics.overlap(this.airDebrisPool, this.jetPool, this.heloHitByDebris, null, this);
+        this.physics.overlap(this.airDebris, this.helicopters, this.heloHitByDebris, null, this);
+        this.physics.overlap(this.airDebris, this.paratroopers, this.debrisHitPara, null, this);
+        this.physics.overlap(this.airDebris, this.player, this.debrisHitGround, null, this);
+        this.physics.overlap(this.airDebris, this.jets, this.heloHitByDebris, null, this);
         
         // Bombs and paratroopers
-        this.physics.overlap(this.paraPool, this.bombPool, this.enemyHit, null, this);
-        this.physics.overlap(this.player, this.bombPool, this.hitGround, null, this);
+        this.physics.overlap(this.paratroopers, this.bombs, this.enemyHit, null, this);
+        this.physics.overlap(this.player, this.bombs, this.hitGround, null, this);
         
         // Paratrooper collisions
-        this.physics.overlap(this.paraPool, this.paraPool, this.hitAnotherPara, null, this);
-        this.physics.overlap(this.player, this.paraPool, this.hitGround, null, this);
+        this.physics.overlap(this.paratroopers, this.paratroopers, this.hitAnotherPara, null, this);
+        this.physics.overlap(this.player, this.paratroopers, this.hitGround, null, this);
         
         // Parachute collisions
-        this.paraPool.children.entries.forEach(para => {
+        this.paratroopers.children.entries.forEach(para => {
             if (para.active && para.myChute && para.myChute.active) {
-                this.physics.overlap(this.bulletPool, para.myChute, this.parachuteHit, null, this);
-                this.physics.overlap(this.airDebrisPool, para.myChute, this.parachuteHit, null, this);
+                this.physics.overlap(this.bullets, para.myChute, this.parachuteHit, null, this);
+                this.physics.overlap(this.airDebris, para.myChute, this.parachuteHit, null, this);
             }
         });
     }
 
-    enemyHit(bullet, enemy) {
-        bullet.setActive(false).setVisible(false);
+    enemyHit(obj1, obj2) {
+        // Only process active objects
+        if (!obj1.active || !obj2.active) {
+            return;
+        }
+        
+        // Determine which is the bullet and which is the enemy
+        // The bullet will have texture key 'bulletFriendly'
+        let bullet, enemy;
+        
+        if (obj1.texture.key === 'bulletFriendly') {
+            bullet = obj1;
+            enemy = obj2;
+        } else if (obj2.texture.key === 'bulletFriendly') {
+            bullet = obj2;
+            enemy = obj1;
+        } else {
+            // Neither is a bullet - this might be para vs bomb collision
+            // In this case, treat first param as the one that gets hit
+            enemy = obj2;
+            bullet = obj1;
+        }
+        
+        // Destroy the bullet
+        if (bullet.texture.key === 'bulletFriendly') {
+            bullet.destroy();
+        }
         
         if (enemy.texture.key === 'heloEnemy001') {
             this.explode(enemy);
@@ -563,7 +528,7 @@ export class Game extends Phaser.Scene {
         if (enemy.texture.key === 'bomb') {
             this.explode(enemy);
             this.addToScore(enemy.reward);
-            enemy.setActive(false).setVisible(false);
+            enemy.destroy();
             return;
         }
         
@@ -582,6 +547,11 @@ export class Game extends Phaser.Scene {
     }
 
     heloHitByDebris(debris, enemy) {
+        // Only process active objects
+        if (!debris.active || !enemy.active) {
+            return;
+        }
+        
         this.explode(enemy);
         this.addToScore(enemy.reward * 2);
         debris.kill();
@@ -589,19 +559,29 @@ export class Game extends Phaser.Scene {
     }
 
     parachuteHit(bullet, parachute) {
+        // Only process active objects
+        if (!bullet.active || !parachute.active) {
+            return;
+        }
+        
         if (parachute.texture.key === 'parachute' && parachute.parent) {
             parachute.parent.killChute(true);
             this.hitParachute.play();
             this.addToScore(parachute.reward * 2);
             
-            if (bullet.setActive) {
-                bullet.setActive(false).setVisible(false);
+            if (bullet.texture.key === 'bulletFriendly') {
+                bullet.destroy();
             }
             return;
         }
     }
 
     debrisHitPara(debris, target) {
+        // Only process active objects
+        if (!debris.active || !target.active) {
+            return;
+        }
+        
         if (target.texture.key === 'paratrooper') {
             this.spawnGore(target);
             this.addToScore(target.reward * 2);
@@ -614,14 +594,24 @@ export class Game extends Phaser.Scene {
     }
 
     debrisHitGround(player, debris) {
-        if (debris && debris.kill) {
+        // Only process active debris
+        if (!debris || !debris.active) {
+            return;
+        }
+        
+        if (debris.kill) {
             debris.kill();
-        } else if (debris && debris.setActive) {
+        } else if (debris.setActive) {
             debris.setActive(false).setVisible(false);
         }
     }
 
     hitGround(player, impactee) {
+        // Only process active objects
+        if (!impactee.active) {
+            return;
+        }
+        
         if (impactee.texture.key === 'paratrooper') {
             const landedSafe = impactee.hitGround();
             
@@ -634,14 +624,19 @@ export class Game extends Phaser.Scene {
         }
         
         if (impactee.texture.key === 'bomb') {
-            impactee.setActive(false).setVisible(false);
-            this.explode(impactee);
+            // Store position before destroying
+            const bombX = impactee.x;
+            const bombY = impactee.y;
+            // Pass position object for explosion
+            this.explode({ x: bombX, y: bombY, texture: { key: 'bomb' }, body: null });
+            impactee.destroy();
             return;
         }
     }
 
     hitAnotherPara(para1, para2) {
-        if (para1 === para2) {
+        // Only process active paratroopers
+        if (!para1.active || !para2.active || para1 === para2) {
             return;
         }
         
@@ -653,6 +648,10 @@ export class Game extends Phaser.Scene {
         
         if (para1.body.velocity.y > para1.downwardPull * 2 || 
             para2.body.velocity.y > para2.downwardPull * 2) {
+            // Spawn gore for both paratroopers
+            this.spawnGore(para1);
+            this.spawnGore(para2);
+            
             para1.kill();
             para2.kill();
             this.thwack.play();
@@ -661,25 +660,31 @@ export class Game extends Phaser.Scene {
     }
 
     spawnGore(target) {
+        const particleCount = Phaser.Math.Between(7, 18);
         this.goreEmitter.setPosition(target.x, target.y);
-        this.goreEmitter.explode(Phaser.Math.Between(7, 18));
+        this.goreEmitter.explode(particleCount);
         this.thwack.play();
     }
 
     explode(sprite) {
-        const explosion = this.explosionPool.getFirstDead();
-        if (!explosion) {
-            return;
-        }
+        // Create explosion dynamically
+        const explosion = this.physics.add.sprite(sprite.x, sprite.y, 'explosion');
+        explosion.setOrigin(0.5, 0.5);
         
-        explosion.setActive(true).setVisible(true);
-        explosion.setPosition(sprite.x, sprite.y);
+        // Play explosion animation
         explosion.play('boom');
         
+        // If the sprite has velocity (helicopter or jet), make explosion move with it
         if (sprite.body && (sprite.texture.key === 'heloEnemy001' || sprite.texture.key === 'jet')) {
             explosion.body.setVelocity(sprite.body.velocity.x, sprite.body.velocity.y);
         }
         
+        // Destroy explosion after animation completes
+        explosion.on('animationcomplete', () => {
+            explosion.destroy();
+        });
+        
+        // Play explosion sound
         this.sfxExplosion001.play();
     }
 

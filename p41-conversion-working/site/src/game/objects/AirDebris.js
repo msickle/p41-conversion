@@ -1,4 +1,5 @@
 import { GameConfig } from '../config.js';
+import { FlameEmitter } from './FlameEmitter.js';
 
 export class AirDebris extends Phaser.GameObjects.Sprite {
     constructor(scene, x, y) {
@@ -19,11 +20,15 @@ export class AirDebris extends Phaser.GameObjects.Sprite {
         this.setActive(false).setVisible(false);
     }
     
-    addDebris(x, y, vx, vy) {
-        // Reset and activate
+    addDebris(x, y, vx, vy, airDebrisGroup) {
+        // Activate and position
         this.setActive(true).setVisible(true);
-        this.x = x;
-        this.y = y;
+        this.setPosition(x, y);
+        
+        // Add to group for collision detection
+        if (airDebrisGroup) {
+            airDebrisGroup.add(this);
+        }
         
         // Random properties
         const spreadX = 42;
@@ -40,35 +45,26 @@ export class AirDebris extends Phaser.GameObjects.Sprite {
         // Set scale and frame
         this.setScale(size, size);
         
-        // Get the actual frame count from the texture
-        // In Phaser 3, we need to check the actual frames available
-        const frames = this.texture.getFrameNames();
-        // Filter out __BASE and other special frames, get numeric frames only
-        const numericFrames = frames.filter(f => !isNaN(f)).map(f => parseInt(f));
-        const maxFrame = numericFrames.length > 0 ? Math.max(...numericFrames) : 0;
+        // Get the frame count from the texture
+        const frameCount = this.texture.frameTotal;
         
-        if (maxFrame > 0) {
-            this.setFrame(Phaser.Math.Between(0, maxFrame));
+        // Set a random frame (frameTotal includes __BASE, so subtract 1)
+        if (frameCount > 1) {
+            const selectedFrame = Phaser.Math.Between(0, frameCount - 2);
+            this.setFrame(selectedFrame);
         }
         
-        // Spawn flame effect 50% of the time
+        // Spawn flame effect 50% of the time - create dynamically
         const flameSpawnChance = Phaser.Math.Between(1, 100);
         
         if (flameSpawnChance > 50) {
-            const g = this.scene.gameState;
-            if (g && g.flamePool) {
-                const flame = g.flamePool.getFirstDead();
-                if (flame) {
-                    flame.makeFire(this.x, this.y, this.body.velocity.x, this.body.velocity.y);
-                }
-            }
+            const flame = new FlameEmitter(this.scene, this.x, this.y);
+            flame.makeFire(this.x, this.y, this.body.velocity.x, this.body.velocity.y);
         }
     }
     
     kill() {
-        this.setActive(false);
-        this.setVisible(false);
-        
+        this.destroy();
         return this;
     }
     

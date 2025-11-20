@@ -1,4 +1,6 @@
 import { GameConfig } from '../config.js';
+import { AirDebris } from './AirDebris.js';
+import { Paratrooper } from './Paratrooper.js';
 
 export class Helicopter extends Phaser.GameObjects.Sprite {
     constructor(scene, x, y) {
@@ -22,6 +24,13 @@ export class Helicopter extends Phaser.GameObjects.Sprite {
         this.body.checkWorldBounds = true;
         this.body.onWorldBounds = true;
         
+        // Listen for leaving world bounds
+        scene.physics.world.on('worldbounds', (body) => {
+            if (body.gameObject === this) {
+                this.kill();
+            }
+        });
+        
         // Create animation
         if (!scene.anims.exists('helo_fly')) {
             scene.anims.create({
@@ -33,9 +42,12 @@ export class Helicopter extends Phaser.GameObjects.Sprite {
         }
     }
     
-    spawnHelo(paraPool) {
+    spawnHelo(paratroopersGroup) {
         // Play flying animation
         this.play('helo_fly');
+        
+        // Store reference to paratroopers group
+        this.paratroopersGroup = paratroopersGroup;
         
         // Set up timer to spawn paratroopers
         const timerValue = Phaser.Math.Between(1500, 3000);
@@ -43,42 +55,30 @@ export class Helicopter extends Phaser.GameObjects.Sprite {
         this.jumpTimer = this.scene.time.addEvent({
             delay: timerValue,
             callback: this.spawnPara,
-            args: [paraPool],
             callbackScope: this,
             loop: true
         });
     }
     
-    spawnPara(paraPool) {
-        if (this.active && paraPool) {
-            // Get first dead paratrooper from pool
-            const para = paraPool.getFirstDead();
+    spawnPara() {
+        if (this.active && this.paratroopersGroup) {
+            // Create paratrooper dynamically
+            const para = new Paratrooper(this.scene, this.x, this.y + 32);
+            para.body.setVelocityX(this.body.velocity.x);
+            this.paratroopersGroup.add(para);
             
-            if (para) {
-                para.setActive(true).setVisible(true);
-                para.x = this.x;
-                para.y = this.y + 32;
-                para.body.setVelocityX(this.body.velocity.x);
-                
-                para.jump();
-            }
+            para.jump();
         }
     }
     
     kill() {
-        // Get reference to scene's debris pool
-        const g = this.scene.gameState;
-        
         // Spawn debris
         const spawnAmount = Phaser.Math.Between(0, GameConfig.AIR_DEBRIS_MAX_EVENT);
         
-        if (this.body && this.body.world && g && g.airDebrisPool) {
-            for (let i = 0; i < spawnAmount; i++) {
-                const debris = g.airDebrisPool.getFirstDead();
-                if (debris) {
-                    debris.addDebris(this.x, this.y, this.body.velocity.x, this.body.velocity.y);
-                }
-            }
+        for (let i = 0; i < spawnAmount; i++) {
+            // Create air debris dynamically
+            const debris = new AirDebris(this.scene, this.x, this.y);
+            debris.addDebris(this.x, this.y, this.body.velocity.x, this.body.velocity.y, this.scene.airDebris);
         }
         
         // Stop timer
@@ -87,9 +87,8 @@ export class Helicopter extends Phaser.GameObjects.Sprite {
             this.jumpTimer = null;
         }
         
-        // Deactivate sprite
-        this.setActive(false);
-        this.setVisible(false);
+        // Destroy sprite
+        this.destroy();
         
         return this;
     }

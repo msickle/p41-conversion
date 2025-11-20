@@ -54,14 +54,13 @@ export class FlameEmitter extends Phaser.GameObjects.Sprite {
     }
     
     kill() {
-        // Stop emitting
+        // Stop emitting and destroy emitter
         if (this.flameEmitter) {
             this.flameEmitter.stop();
+            this.flameEmitter.destroy();
         }
         
-        this.setActive(false);
-        this.setVisible(false);
-        
+        this.destroy();
         return this;
     }
     

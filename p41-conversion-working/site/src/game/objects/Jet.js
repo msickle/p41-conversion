@@ -1,4 +1,5 @@
 import { GameConfig } from '../config.js';
+import { AirDebris } from './AirDebris.js';
 
 export class Jet extends Phaser.GameObjects.Sprite {
     constructor(scene, x, y) {
@@ -17,54 +18,68 @@ export class Jet extends Phaser.GameObjects.Sprite {
         // Set bounds checking
         this.body.checkWorldBounds = true;
         this.body.onWorldBounds = true;
+        
+        // Listen for leaving world bounds
+        scene.physics.world.on('worldbounds', (body) => {
+            if (body.gameObject === this) {
+                this.kill();
+            }
+        });
     }
     
-    spawnJet(bombPool) {
+    spawnJet(bombsGroup) {
+        // Store reference to bombs group
+        this.bombsGroup = bombsGroup;
+        
         // Schedule bomb drop
         const timerValue = Phaser.Math.Between(250, 500);
         
-        this.bombTimer = this.scene.time.delayedCall(timerValue, this.dropBomb, [bombPool], this);
+        this.bombTimer = this.scene.time.delayedCall(timerValue, this.dropBomb, [], this);
     }
     
-    dropBomb(bombPool) {
-        if (this.active && bombPool) {
-            // Get first dead bomb from pool
-            const bomb = bombPool.getFirstDead();
+    dropBomb() {
+        if (this.active && this.bombsGroup) {
+            // Create bomb dynamically
+            const bomb = this.scene.physics.add.sprite(this.x, this.y + 32, 'bomb');
+            bomb.setOrigin(0.5, 0.5);
+            bomb.angle = 0;
+            bomb.body.setVelocityX(this.body.velocity.x);
+            bomb.body.setVelocityY(GameConfig.TERMINAL_VELOCITY);
+            bomb.setScale(this.scaleX, this.scaleY);
+            bomb.reward = GameConfig.BOMB_REWARD;
             
-            if (bomb) {
-                bomb.setActive(true).setVisible(true);
-                bomb.angle = 0;
-                bomb.x = this.x;
-                bomb.y = this.y + 32;
-                bomb.body.setVelocityX(this.body.velocity.x);
-                bomb.body.setVelocityY(GameConfig.TERMINAL_VELOCITY);
-                bomb.setScale(this.scaleX, this.scaleY);
-                
-                // Add rotation tween
-                this.scene.tweens.add({
-                    targets: bomb,
-                    angle: 45 * bomb.scaleX,
-                    duration: 2000,
-                    ease: 'Linear'
-                });
-            }
+            // Enable world bounds checking
+            bomb.body.checkWorldBounds = true;
+            bomb.body.onWorldBounds = true;
+            
+            // Destroy when leaving world bounds
+            this.scene.physics.world.on('worldbounds', (body) => {
+                if (body.gameObject === bomb) {
+                    bomb.destroy();
+                }
+            });
+            
+            // Add to bombs group for collision detection
+            this.bombsGroup.add(bomb);
+            
+            // Add rotation tween
+            this.scene.tweens.add({
+                targets: bomb,
+                angle: 45 * bomb.scaleX,
+                duration: 2000,
+                ease: 'Linear'
+            });
         }
     }
     
     kill() {
-        // Get reference to scene's debris pool
-        const g = this.scene.gameState;
-        
         // Spawn debris
         const spawnAmount = Phaser.Math.Between(0, GameConfig.AIR_DEBRIS_MAX_EVENT);
         
-        if (this.body && this.body.world && g && g.airDebrisPool) {
-            for (let i = 0; i < spawnAmount; i++) {
-                const debris = g.airDebrisPool.getFirstDead();
-                if (debris) {
-                    debris.addDebris(this.x, this.y, this.body.velocity.x, this.body.velocity.y);
-                }
-            }
+        for (let i = 0; i < spawnAmount; i++) {
+            // Create air debris dynamically
+            const debris = new AirDebris(this.scene, this.x, this.y);
+            debris.addDebris(this.x, this.y, this.body.velocity.x, this.body.velocity.y, this.scene.airDebris);
         }
         
         // Stop timer
@@ -73,9 +88,8 @@ export class Jet extends Phaser.GameObjects.Sprite {
             this.bombTimer = null;
         }
         
-        // Deactivate sprite
-        this.setActive(false);
-        this.setVisible(false);
+        // Destroy sprite
+        this.destroy();
         
         return this;
     }

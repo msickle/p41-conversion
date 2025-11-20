@@ -38,6 +38,13 @@ export class Paratrooper extends Phaser.GameObjects.Sprite {
         this.body.setCollideWorldBounds(false);
         this.body.checkWorldBounds = true;
         this.body.onWorldBounds = true;
+        
+        // Listen for leaving world bounds
+        scene.physics.world.on('worldbounds', (body) => {
+            if (body.gameObject === this) {
+                this.kill();
+            }
+        });
     }
     
     jump() {
@@ -54,7 +61,7 @@ export class Paratrooper extends Phaser.GameObjects.Sprite {
     
     deployChute() {
         this.myChute.setActive(true).setVisible(true);
-        this.myChute.setPosition(this.x, this.y - 22);
+        this.myChute.setPosition(this.x, this.y - 8);
         this.deployedChute = true;
         this.body.setVelocityY(this.downwardPull);
         this.body.setDragX(10);
@@ -90,22 +97,20 @@ export class Paratrooper extends Phaser.GameObjects.Sprite {
     
     kill() {
         // Custom kill method to handle paratrooper-specific cleanup
-        this.setActive(false);
-        this.setVisible(false);
-        
-        this.myChute.setActive(false).setVisible(false);
-        
-        // Reset state flags
-        this.jumped = false;
-        this.onGround = false;
-        this.deployedChute = false;
-        this.chuteDestroyed = false;
         
         // Clear any pending timers
         if (this.deployChuteTimer) {
             this.deployChuteTimer.remove();
             this.deployChuteTimer = null;
         }
+        
+        // Destroy chute
+        if (this.myChute) {
+            this.myChute.destroy();
+        }
+        
+        // Destroy paratrooper
+        this.destroy();
         
         return this;
     }
@@ -115,7 +120,7 @@ export class Paratrooper extends Phaser.GameObjects.Sprite {
         
         // Update chute position to follow paratrooper
         if (this.myChute.active) {
-            this.myChute.setPosition(this.x, this.y - 22);
+            this.myChute.setPosition(this.x, this.y - 8);
         }
     }
 }

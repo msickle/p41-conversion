@@ -159,8 +159,8 @@ export class Game extends Phaser.Scene {
             });
         }
         
-        // Create muzzle smoke particles (positioned at barrel tip during firing)
-        // Note: Particles should drift upward independently of gun rotation
+        // Create muzzle smoke particle emitter (stays at origin, we emit at specific positions)
+        // This ensures particles don't follow the gun as it moves
         this.muzzleSmoke = this.add.particles(0, 0, 'smokePuff', {
             speed: { min: 10, max: 30 },
             angle: { min: 260, max: 280 }, // Mostly upward
@@ -396,9 +396,10 @@ export class Game extends Phaser.Scene {
         const smokeBarrelLength = 44;
         const smokeX = this.gunBarrel.x + Math.cos(gunAngleRads) * smokeBarrelLength;
         const smokeY = this.gunBarrel.y + Math.sin(gunAngleRads) * smokeBarrelLength;
-        this.muzzleSmoke.setPosition(smokeX, smokeY);
-        this.muzzleSmoke.setAngle(0); // Ensure emitter itself isn't rotated
-        this.muzzleSmoke.explode(4);
+        
+        // Emit particles at the barrel tip without moving the emitter
+        // This ensures already-emitted particles don't follow the gun
+        this.muzzleSmoke.emitParticleAt(smokeX, smokeY, 4);
         
         // Play gunshot sound
         const shotSelection = Phaser.Math.Between(0, this.gunshotSounds.length - 1);
@@ -479,6 +480,7 @@ export class Game extends Phaser.Scene {
             if (para.active && para.myChute && para.myChute.active) {
                 this.physics.overlap(this.bullets, para.myChute, this.parachuteHit, null, this);
                 this.physics.overlap(this.airDebris, para.myChute, this.parachuteHit, null, this);
+                this.physics.overlap(this.bombs, para.myChute, this.parachuteHit, null, this);
             }
         });
     }
@@ -489,25 +491,27 @@ export class Game extends Phaser.Scene {
             return;
         }
         
-        // Determine which is the bullet and which is the enemy
-        // The bullet will have texture key 'bulletFriendly'
+        // Determine which is the bullet/projectile and which is the enemy
         let bullet, enemy;
         
-        if (obj1.texture.key === 'bulletFriendly') {
+        if (obj1.texture.key === 'bulletFriendly' || obj1.texture.key === 'bomb') {
             bullet = obj1;
             enemy = obj2;
-        } else if (obj2.texture.key === 'bulletFriendly') {
+        } else if (obj2.texture.key === 'bulletFriendly' || obj2.texture.key === 'bomb') {
             bullet = obj2;
             enemy = obj1;
         } else {
-            // Neither is a bullet - this might be para vs bomb collision
-            // In this case, treat first param as the one that gets hit
+            // Neither is a projectile - shouldn't happen, but handle it
             enemy = obj2;
             bullet = obj1;
         }
         
-        // Destroy the bullet
+        // Handle projectile destruction/explosion
         if (bullet.texture.key === 'bulletFriendly') {
+            bullet.destroy();
+        } else if (bullet.texture.key === 'bomb') {
+            // Bombs explode when hitting anything
+            this.explode(bullet);
             bullet.destroy();
         }
         
@@ -558,9 +562,9 @@ export class Game extends Phaser.Scene {
         enemy.kill();
     }
 
-    parachuteHit(bullet, parachute) {
+    parachuteHit(projectile, parachute) {
         // Only process active objects
-        if (!bullet.active || !parachute.active) {
+        if (!projectile.active || !parachute.active) {
             return;
         }
         
@@ -569,8 +573,14 @@ export class Game extends Phaser.Scene {
             this.hitParachute.play();
             this.addToScore(parachute.reward * 2);
             
-            if (bullet.texture.key === 'bulletFriendly') {
-                bullet.destroy();
+            // Destroy or explode the projectile
+            if (projectile.texture.key === 'bulletFriendly') {
+                projectile.destroy();
+            } else if (projectile.texture.key === 'bomb') {
+                this.explode(projectile);
+                projectile.destroy();
+            } else if (projectile.texture.key === 'airDebris') {
+                // Air debris just passes through
             }
             return;
         }

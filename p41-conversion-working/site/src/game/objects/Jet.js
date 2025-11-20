@@ -1,5 +1,6 @@
 import { GameConfig } from '../config.js';
 import { AirDebris } from './AirDebris.js';
+import { Bomb } from './Bomb.js';
 
 export class Jet extends Phaser.GameObjects.Sprite {
     constructor(scene, x, y) {
@@ -40,35 +41,13 @@ export class Jet extends Phaser.GameObjects.Sprite {
     dropBomb() {
         if (this.active && this.bombsGroup) {
             // Create bomb dynamically
-            const bomb = this.scene.physics.add.sprite(this.x, this.y + 32, 'bomb');
-            bomb.setOrigin(0.5, 0.5);
-            bomb.angle = 0;
-            bomb.body.setVelocityX(this.body.velocity.x);
-            bomb.body.setVelocityY(GameConfig.TERMINAL_VELOCITY);
-            bomb.setScale(this.scaleX, this.scaleY);
-            bomb.reward = GameConfig.BOMB_REWARD;
-            
-            // Enable world bounds checking
-            bomb.body.checkWorldBounds = true;
-            bomb.body.onWorldBounds = true;
-            
-            // Destroy when leaving world bounds
-            this.scene.physics.world.on('worldbounds', (body) => {
-                if (body.gameObject === bomb) {
-                    bomb.destroy();
-                }
-            });
+            const bomb = new Bomb(this.scene, this.x, this.y);
             
             // Add to bombs group for collision detection
             this.bombsGroup.add(bomb);
             
-            // Add rotation tween
-            this.scene.tweens.add({
-                targets: bomb,
-                angle: 45 * bomb.scaleX,
-                duration: 2000,
-                ease: 'Linear'
-            });
+            // Drop the bomb with jet's velocity
+            bomb.drop(this.x, this.y, this.body.velocity.x, this.scaleX);
         }
     }
     

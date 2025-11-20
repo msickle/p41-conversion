@@ -14,7 +14,7 @@ export class Helicopter extends Phaser.GameObjects.Sprite {
         this.setOrigin(0.5, 0.5);
         
         // Spawn timing
-        this.paraSpawnDelay = Phaser.Math.Between(500, 1200);
+        this.paraSpawnDelay = Phaser.Math.Between(1200, 3200);
         this.nextParatrooperSpawn = 0;
         
         // Set reward

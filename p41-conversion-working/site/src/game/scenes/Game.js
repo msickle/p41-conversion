@@ -614,7 +614,11 @@ export class Game extends Phaser.Scene {
     }
 
     debrisHitGround(player, debris) {
-        debris.kill();
+        if (debris && debris.kill) {
+            debris.kill();
+        } else if (debris && debris.setActive) {
+            debris.setActive(false).setVisible(false);
+        }
     }
 
     hitGround(player, impactee) {

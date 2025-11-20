@@ -39,7 +39,17 @@ export class AirDebris extends Phaser.GameObjects.Sprite {
         
         // Set scale and frame
         this.setScale(size, size);
-        this.setFrame(Phaser.Math.Between(0, 16));
+        
+        // Get the actual frame count from the texture
+        // In Phaser 3, we need to check the actual frames available
+        const frames = this.texture.getFrameNames();
+        // Filter out __BASE and other special frames, get numeric frames only
+        const numericFrames = frames.filter(f => !isNaN(f)).map(f => parseInt(f));
+        const maxFrame = numericFrames.length > 0 ? Math.max(...numericFrames) : 0;
+        
+        if (maxFrame > 0) {
+            this.setFrame(Phaser.Math.Between(0, maxFrame));
+        }
         
         // Spawn flame effect 50% of the time
         const flameSpawnChance = Phaser.Math.Between(1, 100);

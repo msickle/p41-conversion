@@ -32,7 +32,6 @@ export class Preloader extends Phaser.Scene {
         this.load.setPath('src/assets/game');
 
         // Load sprite sheets
-        this.load.spritesheet('testSpriteSheet', 'gridtiles.png', { frameWidth: 16, frameHeight: 16 });
         this.load.spritesheet('heloEnemy001', 'ss-helo-new-001.png', { frameWidth: 32, frameHeight: 16 });
         this.load.spritesheet('explosion', 'explosion.png', { frameWidth: 32, frameHeight: 32 });
         this.load.spritesheet('gunMantle', 'gun-mantle.png', { frameWidth: 32, frameHeight: 32 });
@@ -40,7 +39,6 @@ export class Preloader extends Phaser.Scene {
         this.load.spritesheet('gunMuzzleFlash', 'gun-muzzle-flash.png', { frameWidth: 16, frameHeight: 16 });
         this.load.spritesheet('parachute', 'parachute.png', { frameWidth: 22, frameHeight: 15 });
         this.load.spritesheet('paratrooper', 'paratrooper-test-004.png', { frameWidth: 24, frameHeight: 24 });
-        this.load.spritesheet('bloodyMess', 'bloody-mess.png', { frameWidth: 16, frameHeight: 16 });
         this.load.spritesheet('airDebris', 'air-debris.png', { frameWidth: 32, frameHeight: 32 });
         this.load.spritesheet('flamingMess', 'flaming-mess.png', { frameWidth: 16, frameHeight: 16 });
         this.load.spritesheet('jet', 'jet.png', { frameWidth: 64, frameHeight: 16 });

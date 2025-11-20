@@ -170,9 +170,9 @@ export class Game extends Phaser.Scene {
         this.muzzleSmoke = this.add.particles(0, 0, 'smokePuff', {
             speed: { min: 10, max: 30 },
             angle: { min: 260, max: 280 }, // Mostly upward
-            gravityY: -200,
+            gravityY: -100,
             scale: { start: 0.1, end: 0.3 },
-            alpha: { start: 1, end: 0.1 },
+            alpha: { start: .5, end: 0.05 },
             lifespan: 3000,
             frequency: -1,
             emitting: false
@@ -491,8 +491,10 @@ export class Game extends Phaser.Scene {
         // Play muzzle flash animation
         const randomValue = Phaser.Math.Between(1, 4);
         const animationSelection = 'fire' + randomValue;
+        this.muzzleFlash.setVisible(true);
+        this.muzzleFlash.setFrame(0);  // Reset to first frame
         this.muzzleFlash.play(animationSelection);
-        
+
         // Position and emit muzzle smoke at barrel tip (reuse gunAngle from above)
         const smokeBarrelLength = 44;
         const smokeX = this.gunBarrel.x + Math.cos(gunAngleRads) * smokeBarrelLength;
@@ -693,13 +695,10 @@ export class Game extends Phaser.Scene {
         if (!debris.active || !target.active) {
             return;
         }
-        
-        if (target.texture.key === 'paratrooper') {
             this.spawnGore(target);
             this.addToScore(target.reward * 2);
             target.kill();
             debris.kill(); // Destroy the debris that hit the paratrooper
-        }
     }
 
     debrisHitGround(player, debris) {

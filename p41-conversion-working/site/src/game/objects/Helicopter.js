@@ -16,10 +16,6 @@ export class Helicopter extends Phaser.GameObjects.Sprite {
         // Set physics body size to match sprite
         this.body.setSize(this.width, this.height);
         
-        // Spawn timing
-        this.paraSpawnDelay = Phaser.Math.Between(4200, 6200);
-        this.nextParatrooperSpawn = 0;
-        
         // Set reward
         this.reward = GameConfig.HELO_REWARD;
         

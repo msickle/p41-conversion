@@ -8,6 +8,7 @@ alwaysApply: true
 Purpose: To create games in PhaserJS.
 
 Agent restrictions:  
+-Do not try to build and dev the site without asking explicitly
 -Do not evaluate the /.reference folder unless a file is added to chat as context.
 -Do not change anything outside of the /site/src/game folder unless asked to.
 

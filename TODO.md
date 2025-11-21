@@ -3,6 +3,10 @@
 ## Known Issues & Goals
 
 
+- Clean up assets
+
+- Clean up config.  For instance can we record game name just one time?
+
 - Create GameController.  It should own the pace of the game.  Be able to send waves, that progress over time.  Allow for upgrade screen/scene between waves.  Can I load another scene without disrupting context?  Or do I want to make sure that it is a clean slate for every game run?
 
 - Ground object records every update when soldiers touch it.  Should be a current count of living soldiers.  Probably best to hold on this until there is a GameController

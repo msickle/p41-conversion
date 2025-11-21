@@ -84,4 +84,3 @@ export class FlameEmitter extends Phaser.GameObjects.Sprite {
         }
     }
 }
-

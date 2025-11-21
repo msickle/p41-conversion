@@ -4,10 +4,10 @@ import { Preloader } from './scenes/Preloader.js';
 
 // Game configuration
 const gameConfig = {
-    // Game dimensions (16:9-ish ratio for original Paratroopy game)
+
     dimensions: {
-        width: 850,
-        height: 478,
+        width: 1024,
+        height: 768,
     },
     // Visual settings
     colors: {
@@ -22,7 +22,7 @@ const gameConfig = {
     },
     // Game settings
     game: {
-        title: 'Paratroopy',
+        title: 'Paratrooper!',
         version: '1.0.0',
         fps: 60,
     },

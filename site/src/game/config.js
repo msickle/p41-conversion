@@ -52,7 +52,7 @@ export const GameConfig = {
     STATE_BG_COLOR_GAME: '#042',
 
     // Text
-    TEXT_GAME_TITLE: "Paratroopy",
+    TEXT_GAME_TITLE: "Paratrooper!",
     TEXT_PRELOAD: "Loading..."
 };
 

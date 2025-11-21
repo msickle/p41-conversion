@@ -93,7 +93,7 @@ export class Game extends Phaser.Scene {
             centerX,
             15,
             '' + this.score,
-            { font: '14px monospace', fill: '#eed', align: 'center' }
+            { font: '14px monospace', fill: '#588', align: 'center' }
         );
         this.scoreText.setOrigin(0.5, 0.5);
         
@@ -297,7 +297,9 @@ export class Game extends Phaser.Scene {
         }
         
         // Scroll background
-        this.sky.tilePositionY -= this.skyScrollSpeed * (delta / 1000);
+        // Disable for now - I was thinking it could make night
+        // or day cycles
+        //this.sky.tilePositionY -= this.skyScrollSpeed * (delta / 1000);
         
         // Update player (muzzle flash position, etc.)
         this.player.update(time, delta);

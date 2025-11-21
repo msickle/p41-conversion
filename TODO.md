@@ -1,6 +1,12 @@
 # TODO List
 
-## Known Issues
+## Known Issues & Goals
+
+
+- Create GameController.  It should own the pace of the game.  Be able to send waves, that progress over time.  Allow for upgrade screen/scene between waves.  Can I load another scene without disrupting context?  Or do I want to make sure that it is a clean slate for every game run?
+
+- Ground object records every update when soldiers touch it.  Should be a current count of living soldiers.  Probably best to hold on this until there is a GameController
+
 
 ### Air Debris Empty Frames
 - **Issue**: Some air debris pieces show as black squares with diagonal lines
@@ -8,12 +14,4 @@
 - **Status**: Minor visual issue, deferred
 - **Notes**: Most debris shows correctly, only occasional empty frames
 
-### Score collected but not displayed
-- **Issue**: addToScore() is called and collecting score but it never displays
-- **Issue**: addToScore() gets NaN error when paratroopers hit the deck
-
-### Audio Context Warning
-- **Issue**: Browser console shows repeated warnings about AudioContext not being allowed to start without user gesture
-- **Error Message**: `The AudioContext was not allowed to start. It must be resumed (or created) after a user gesture on the page.`
-- **Status**: Deferred for later investigation
-- **Notes**: This is a browser security feature. The game functions normally, but the console warnings are persistent. Need to implement a proper solution that doesn't interfere with game loading.
+.

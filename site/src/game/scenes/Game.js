@@ -267,9 +267,11 @@ export class Game extends Phaser.Scene {
             if (this.isPaused) {
                 console.log('[GAME] PAUSED - Press P to resume');
                 this.physics.pause();
+                this.time.paused = true;
             } else {
                 console.log('[GAME] RESUMED');
                 this.physics.resume();
+                this.time.paused = false;
             }
         }
         

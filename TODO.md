@@ -2,9 +2,6 @@
 
 ## Known Issues
 
-### Pause function does not pause everything
-- **Issue**:  Paratroopers will still spawn during a pause. Need to scan all game objects for extra pause handling.
-
 ### Air Debris Empty Frames
 - **Issue**: Some air debris pieces show as black squares with diagonal lines
 - **Cause**: Some frames in the spritesheet may be empty or frame selection is slightly off

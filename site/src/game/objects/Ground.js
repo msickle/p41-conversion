@@ -35,13 +35,13 @@ export class Ground extends Phaser.GameObjects.Sprite {
         }
         
         // Log for debugging
-        console.log(`[GROUND] Paratrooper landed. Count: ${this.landedEnemyCount}/${this.maxLandedEnemies}`);
+        //console.log(`[GROUND] Paratrooper landed. Count: ${this.landedEnemyCount}/${this.maxLandedEnemies}`);
     }
     
     onHitByDebris(debris) {
         // Visual impact effect placeholder
         // Future: Add dust particles, screen shake, etc.
-        console.log('[GROUND] Hit by debris at', debris.x, debris.y);
+        //console.log('[GROUND] Hit by debris at', debris.x, debris.y);
         
         // Destroy the debris
         if (debris.active && typeof debris.onHitGround === 'function') {

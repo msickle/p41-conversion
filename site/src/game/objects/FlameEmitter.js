@@ -32,8 +32,9 @@ export class FlameEmitter extends Phaser.GameObjects.Sprite {
     }
     
     makeFire(x, y, vx, vy) {
-        // Reset and activate
-        this.setActive(true).setVisible(true);
+        // Reset and activate (keep sprite invisible - only particle emitter is visible)
+        this.setActive(true);
+        this.setVisible(false);
         this.x = x;
         this.y = y;
         

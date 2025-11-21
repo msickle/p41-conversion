@@ -9,9 +9,6 @@
 
 
 ### Air Debris Empty Frames
-- **Issue**: Some air debris pieces show as black squares with diagonal lines
-- **Cause**: Some frames in the spritesheet may be empty or frame selection is slightly off
-- **Status**: Minor visual issue, deferred
-- **Notes**: Most debris shows correctly, only occasional empty frames
+- It was the flame emitter all along
 
 .

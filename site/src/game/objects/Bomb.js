@@ -10,6 +10,9 @@ export class Bomb extends Phaser.GameObjects.Sprite {
         
         // Set origin
         this.setOrigin(0.5, 0.5);
+
+        // Set physics body size to match sprite
+        this.body.setSize(this.width, this.height);
         
         // Set reward
         this.reward = GameConfig.BOMB_REWARD;
@@ -19,22 +22,23 @@ export class Bomb extends Phaser.GameObjects.Sprite {
         this.body.onWorldBounds = true;
     }
     
-    drop(jetX, jetY, jetVelocityX, jetScaleX) {
+    drop(jetX, jetY, jetVelocityX, jetFlipX) {
         // Position below jet
         this.setPosition(jetX, jetY + 32);
         this.angle = 0;
         
-        // Set scale to match jet direction
-        this.setScale(jetScaleX, 1);
+        // Set flip to match jet direction
+        this.setFlipX(jetFlipX);
         
         // Set velocity - horizontal from jet, vertical at terminal velocity
         this.body.setVelocityX(jetVelocityX);
         this.body.setVelocityY(GameConfig.TERMINAL_VELOCITY);
         
-        // Add rotation tween
+        // Add rotation tween (negative angle if flipped)
+        const targetAngle = jetFlipX ? -45 : 45;
         this.scene.tweens.add({
             targets: this,
-            angle: 45 * jetScaleX,
+            angle: targetAngle,
             duration: 2000,
             ease: 'Linear'
         });
@@ -97,6 +101,24 @@ export class Bomb extends Phaser.GameObjects.Sprite {
     
     preUpdate(time, delta) {
         super.preUpdate(time, delta);
+        
+        // Adjust hitbox size to encompass rotated sprite bounds
+        // This keeps the hitbox axis-aligned but expands it to cover the rotation
+        const angleRad = Phaser.Math.DegToRad(Math.abs(this.angle));
+        const cos = Math.abs(Math.cos(angleRad));
+        const sin = Math.abs(Math.sin(angleRad));
+        
+        // Use absolute display dimensions to handle negative scale
+        const spriteWidth = Math.abs(this.displayWidth);
+        const spriteHeight = Math.abs(this.displayHeight);
+        
+        // Calculate bounding box of rotated rectangle
+        const newWidth = spriteWidth * cos + spriteHeight * sin;
+        const newHeight = spriteWidth * sin + spriteHeight * cos;
+        
+        // Set size and center the body on the sprite
+        this.body.setSize(newWidth, newHeight);
+        this.body.setOffset((this.width - newWidth) / 2, (this.height - newHeight) / 2);
         
         // Check if out of world bounds (bombs fall down, so check Y too)
         if (this.active && (

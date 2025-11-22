@@ -153,18 +153,18 @@ export class Game extends Phaser.Scene {
 
     setupEnemies() {
         // Paratrooper group (for collision detection) - using physics group for better collision detection
-        this.paratroopers = this.physics.add.group({ runChildUpdate: true });
+        this.paratroopers = this.physics.add.group();
         
         // Parachute group (for collision detection)
         this.parachutes = this.physics.add.group();
         
         // Helicopter group (for collision detection only) - using physics group
-        this.helicopters = this.physics.add.group({ runChildUpdate: true });
+        this.helicopters = this.physics.add.group();
         this.nextHeloAt = 0;
         this.heloDelay = GameConfig.HELO_SPAWN_DELAY;
         
         // Jet group (for collision detection only) - using physics group
-        this.jets = this.physics.add.group({ runChildUpdate: true });
+        this.jets = this.physics.add.group();
         this.nextJetAt = 4000;
         this.jetDelay = GameConfig.JET_SPAWN_DELAY;
         
@@ -189,7 +189,7 @@ export class Game extends Phaser.Scene {
         this.hitboxGraphics.clear();
         
         // Set line style: green, 2px width
-        this.hitboxGraphics.lineStyle(2, 0x00ff00, 1);
+        this.hitboxGraphics.lineStyle(1, 0x00ff00, 1);
         
         // Helper function to draw a body's hitbox
         const drawBody = (sprite, body) => {

@@ -1,5 +1,4 @@
 import { GameConfig } from '../config.js';
-import { FlameEmitter } from './FlameEmitter.js';
 
 export class AirDebris extends Phaser.GameObjects.Sprite {
     constructor(scene, x, y) {
@@ -79,14 +78,6 @@ export class AirDebris extends Phaser.GameObjects.Sprite {
         this.y += Phaser.Math.FloatBetween(-spreadY, spreadY);
         this.body.setVelocityY(GameConfig.TERMINAL_VELOCITY);
         this.body.setAngularVelocity(rotationAmount);
-        
-        // Spawn flame effect 50% of the time - create dynamically
-        const flameSpawnChance = Phaser.Math.Between(1, 100);
-        
-        if (flameSpawnChance > 50) {
-            const flame = new FlameEmitter(this.scene, this.x, this.y);
-            flame.makeFire(this.x, this.y, this.body.velocity.x, this.body.velocity.y);
-        }
     }
     
     onHitHelicopter(helo) {

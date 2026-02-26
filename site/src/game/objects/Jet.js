@@ -42,10 +42,8 @@ export class Jet extends Phaser.GameObjects.Sprite {
             // Add to bombs group for collision detection
             this.bombsGroup.add(bomb);
             
-            // Drop the bomb with jet's velocity
-            // Convert flipX to scaleX value (-1 if flipped, 1 if not)
-            const scaleX = this.flipX ? -1 : 1;
-            bomb.drop(this.x, this.y, this.body.velocity.x, scaleX);
+            // Drop the bomb with jet's velocity and flip state
+            bomb.drop(this.x, this.y, this.body.velocity.x, this.flipX);
         }
     }
     

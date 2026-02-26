@@ -1,6 +1,8 @@
 import { GameConfig } from '../config.js';
 import { Helicopter } from '../objects/Helicopter.js';
 import { Jet } from '../objects/Jet.js';
+import { Player } from '../objects/Player.js';
+import { Ground } from '../objects/Ground.js';
 
 export class Game extends Phaser.Scene {
     constructor() {
@@ -91,7 +93,7 @@ export class Game extends Phaser.Scene {
             centerX,
             15,
             '' + this.score,
-            { font: '14px monospace', fill: '#eed', align: 'center' }
+            { font: '14px monospace', fill: '#588', align: 'center' }
         );
         this.scoreText.setOrigin(0.5, 0.5);
         
@@ -113,87 +115,27 @@ export class Game extends Phaser.Scene {
     }
 
     setupPlayer() {
-        // Create ground sprite
-        this.player = this.physics.add.sprite(
+        // Create ground object
+        this.ground = new Ground(
+            this,
             this.game.config.width / 2,
-            this.game.config.height - 24,
-            'ground2'
+            this.game.config.height - 24
         );
-        this.player.setOrigin(0.5, 0);
-        this.player.body.setVelocity(0, 0);
-        this.player.setDisplaySize(this.game.config.width, 50);
-        this.player.body.immovable = true;
         
-        // Create gun barrel
-        this.gunBarrel = this.add.sprite(
+        // Create player gun object
+        this.player = new Player(
+            this,
             this.game.config.width / 2,
-            this.game.config.height - 38,
-            'gunBarrel'
+            this.game.config.height
         );
-        this.gunBarrel.setOrigin(0.5, 1);
-        
-        // Create muzzle flash (positioned separately, will rotate with barrel calculations)
-        this.muzzleFlash = this.add.sprite(0, 0, 'gunMuzzleFlash');
-        this.muzzleFlash.setFrame(4);
-        this.muzzleFlash.setOrigin(0.5, 0.5);
-        
-        // Create animations for muzzle flash
-        if (!this.anims.exists('fire1')) {
-            this.anims.create({
-                key: 'fire1',
-                frames: this.anims.generateFrameNumbers('gunMuzzleFlash', { frames: [0, 1, 2, 3, 4] }),
-                frameRate: 30,
-                hideOnComplete: true
-            });
-            this.anims.create({
-                key: 'fire2',
-                frames: this.anims.generateFrameNumbers('gunMuzzleFlash', { frames: [3, 2, 1, 0, 4] }),
-                frameRate: 30,
-                hideOnComplete: true
-            });
-            this.anims.create({
-                key: 'fire3',
-                frames: this.anims.generateFrameNumbers('gunMuzzleFlash', { frames: [2, 1, 4] }),
-                frameRate: 30,
-                hideOnComplete: true
-            });
-            this.anims.create({
-                key: 'fire4',
-                frames: this.anims.generateFrameNumbers('gunMuzzleFlash', { frames: [0, 4, 2, 1, 4] }),
-                frameRate: 30,
-                hideOnComplete: true
-            });
-        }
-        
-        // Create muzzle smoke particle emitter (stays at origin, we emit at specific positions)
-        // This ensures particles don't follow the gun as it moves
-        this.muzzleSmoke = this.add.particles(0, 0, 'smokePuff', {
-            speed: { min: 10, max: 30 },
-            angle: { min: 260, max: 280 }, // Mostly upward
-            gravityY: -100,
-            scale: { start: 0.1, end: 0.3 },
-            alpha: { start: .5, end: 0.05 },
-            lifespan: 3000,
-            frequency: -1,
-            emitting: false
-        });
-        
-        // Create gun mantle (base)
-        this.gunMantle = this.add.sprite(
-            this.game.config.width / 2,
-            this.game.config.height - 40,
-            'gunMantle'
-        );
-        this.gunMantle.setOrigin(0.5, 0.5);
     }
 
     setupBullets() {
         // Create group to hold bullets (for collision detection)
-        this.bullets = this.physics.add.group();
-        
-        // Shot timing
-        this.nextShotAt = 0;
-        this.shotDelay = GameConfig.SHOT_DELAY;
+        this.bullets = this.physics.add.group({
+            allowGravity: false,
+            collideWorldBounds: false
+        });
     }
 
     setupPyro() {
@@ -211,18 +153,18 @@ export class Game extends Phaser.Scene {
 
     setupEnemies() {
         // Paratrooper group (for collision detection) - using physics group for better collision detection
-        this.paratroopers = this.physics.add.group({ runChildUpdate: true });
+        this.paratroopers = this.physics.add.group();
         
         // Parachute group (for collision detection)
         this.parachutes = this.physics.add.group();
         
         // Helicopter group (for collision detection only) - using physics group
-        this.helicopters = this.physics.add.group({ runChildUpdate: true });
+        this.helicopters = this.physics.add.group();
         this.nextHeloAt = 0;
         this.heloDelay = GameConfig.HELO_SPAWN_DELAY;
         
         // Jet group (for collision detection only) - using physics group
-        this.jets = this.physics.add.group({ runChildUpdate: true });
+        this.jets = this.physics.add.group();
         this.nextJetAt = 4000;
         this.jetDelay = GameConfig.JET_SPAWN_DELAY;
         
@@ -240,14 +182,6 @@ export class Game extends Phaser.Scene {
         this.falling = this.sound.add('falling');
         this.bassReverbClip = this.sound.add('bassReverbClip', { loop: true });
         this.thwack = this.sound.add('thwack');
-        
-        // Gunshot sounds array
-        this.gunshotSounds = [
-            this.sound.add('shoot1'),
-            this.sound.add('shoot2'),
-            this.sound.add('shoot3'),
-            this.sound.add('shoot4')
-        ];
     }
 
     drawHitboxes() {
@@ -255,7 +189,7 @@ export class Game extends Phaser.Scene {
         this.hitboxGraphics.clear();
         
         // Set line style: green, 2px width
-        this.hitboxGraphics.lineStyle(2, 0x00ff00, 1);
+        this.hitboxGraphics.lineStyle(1, 0x00ff00, 1);
         
         // Helper function to draw a body's hitbox
         const drawBody = (sprite, body) => {
@@ -318,9 +252,9 @@ export class Game extends Phaser.Scene {
             }
         });
         
-        // Draw hitbox for player gun (if it has a body)
-        if (this.player && this.player.body) {
-            drawBody(this.player, this.player.body);
+        // Draw hitbox for ground (if it has a body)
+        if (this.ground && this.ground.body) {
+            drawBody(this.ground, this.ground.body);
         }
     }
 
@@ -333,9 +267,11 @@ export class Game extends Phaser.Scene {
             if (this.isPaused) {
                 console.log('[GAME] PAUSED - Press P to resume');
                 this.physics.pause();
+                this.time.paused = true;
             } else {
                 console.log('[GAME] RESUMED');
                 this.physics.resume();
+                this.time.paused = false;
             }
         }
         
@@ -361,30 +297,37 @@ export class Game extends Phaser.Scene {
         }
         
         // Scroll background
-        this.sky.tilePositionY -= this.skyScrollSpeed * (delta / 1000);
+        // Disable for now - I was thinking it could make night
+        // or day cycles
+        //this.sky.tilePositionY -= this.skyScrollSpeed * (delta / 1000);
+        
+        // Update player (muzzle flash position, etc.)
+        this.player.update(time, delta);
         
         // Gun barrel rotation control
         if (this.cursors.left.isDown) {
-            this.gunBarrel.angle -= GameConfig.GUN_BARREL_ROTATION_SPEED;
+            this.player.rotateLeft();
         }
         if (this.cursors.right.isDown) {
-            this.gunBarrel.angle += GameConfig.GUN_BARREL_ROTATION_SPEED;
+            this.player.rotateRight();
         }
-        
-        // Clamp gun barrel rotation
-        if (this.gunBarrel.angle > GameConfig.GUN_BARREL_ROTATION_LIMIT) {
-            this.gunBarrel.angle = GameConfig.GUN_BARREL_ROTATION_LIMIT;
-        }
-        if (this.gunBarrel.angle < -GameConfig.GUN_BARREL_ROTATION_LIMIT) {
-            this.gunBarrel.angle = -GameConfig.GUN_BARREL_ROTATION_LIMIT;
-        }
-        
-        // Update muzzle flash position and rotation
-        this.updateMuzzleFlashPosition();
         
         // Fire weapon
         if (this.fireKey.isDown) {
-            this.fire();
+            const bulletData = this.player.fire(time);
+            if (bulletData) {
+                // Create bullet from player's returned data
+                const bullet = this.physics.add.sprite(bulletData.x, bulletData.y, 'bulletFriendly');
+                bullet.setOrigin(0.5, 0.5);
+                bullet.body.setCollideWorldBounds(false);
+                bullet.body.checkWorldBounds = true;
+                
+                // Add to group first
+                this.bullets.add(bullet);
+                
+                // Then set velocity after adding to group
+                bullet.body.setVelocity(bulletData.vx, bulletData.vy);
+            }
         }
         
         // Quit game
@@ -412,78 +355,6 @@ export class Game extends Phaser.Scene {
         
         // Check collisions
         this.checkCollisions();
-    }
-    
-    updateMuzzleFlashPosition() {
-        // Calculate muzzle flash position at tip of gun barrel
-        const gunAngle = this.gunBarrel.angle - 90;
-        const gunAngleRads = Phaser.Math.DegToRad(gunAngle);
-        const barrelLength = 46;
-        
-        const flashX = this.gunBarrel.x + Math.cos(gunAngleRads) * barrelLength;
-        const flashY = this.gunBarrel.y + Math.sin(gunAngleRads) * barrelLength;
-        
-        this.muzzleFlash.setPosition(flashX, flashY);
-        this.muzzleFlash.setRotation(gunAngleRads);
-    }
-
-    fire() {
-        if (this.nextShotAt > this.time.now) {
-            return;
-        }
-        
-        this.nextShotAt = this.time.now + this.shotDelay;
-        
-        // Create new bullet dynamically
-        const bullet = this.physics.add.sprite(0, 0, 'bulletFriendly');
-        bullet.setOrigin(0.5, 0.5);
-        bullet.body.setCollideWorldBounds(false);
-        bullet.body.checkWorldBounds = true;
-        this.bullets.add(bullet);
-        
-        // Calculate bullet starting position and velocity
-        const gunAngle = this.gunBarrel.angle - 90;
-        const gunAngleRads = Phaser.Math.DegToRad(gunAngle);
-        
-        // Add slight random spread
-        const gunAngleSlop = Phaser.Math.FloatBetween(-0.05, 0.05);
-        const finalAngle = gunAngleRads + gunAngleSlop;
-        
-        // Calculate bullet start position (at end of barrel)
-        const angleOffsetModifier = -32;
-        const gunAngleX = Math.cos(finalAngle) * angleOffsetModifier;
-        const gunAngleY = Math.sin(finalAngle) * angleOffsetModifier;
-        const bulletStartX = this.gunMantle.x - gunAngleX;
-        const bulletStartY = this.gunMantle.y - gunAngleY;
-        
-        // Activate bullet
-        bullet.setActive(true).setVisible(true);
-        bullet.setPosition(bulletStartX, bulletStartY);
-        
-        // Set bullet velocity
-        const vx = Math.cos(Phaser.Math.DegToRad(gunAngle)) * GameConfig.FRIENDLY_BULLET_SPEED;
-        const vy = Math.sin(Phaser.Math.DegToRad(gunAngle)) * GameConfig.FRIENDLY_BULLET_SPEED;
-        bullet.body.setVelocity(vx, vy);
-        
-        // Play muzzle flash animation
-        const randomValue = Phaser.Math.Between(1, 4);
-        const animationSelection = 'fire' + randomValue;
-        this.muzzleFlash.setVisible(true);
-        this.muzzleFlash.setFrame(0);  // Reset to first frame
-        this.muzzleFlash.play(animationSelection);
-
-        // Position and emit muzzle smoke at barrel tip (reuse gunAngle from above)
-        const smokeBarrelLength = 44;
-        const smokeX = this.gunBarrel.x + Math.cos(gunAngleRads) * smokeBarrelLength;
-        const smokeY = this.gunBarrel.y + Math.sin(gunAngleRads) * smokeBarrelLength;
-        
-        // Emit particles at the barrel tip without moving the emitter
-        // This ensures already-emitted particles don't follow the gun
-        this.muzzleSmoke.emitParticleAt(smokeX, smokeY, 4);
-        
-        // Play gunshot sound
-        const shotSelection = Phaser.Math.Between(0, this.gunshotSounds.length - 1);
-        this.gunshotSounds[shotSelection].play();
     }
 
     spawnEnemies() {
@@ -596,11 +467,10 @@ export class Game extends Phaser.Scene {
         }, null, this);
         
         // Air debris vs ground
-        this.physics.overlap(this.airDebris, this.player, (player, debris) => {
+        this.physics.overlap(this.airDebris, this.ground, (ground, debris) => {
             if (!debris.active) return;
-            // Make sure the debris object has the method
-            if (typeof debris.onHitGround !== 'function') return;
-            debris.onHitGround();
+            // Delegate to ground object
+            this.ground.onHitByDebris(debris);
         }, null, this);
         
         // Bombs vs paratroopers
@@ -613,11 +483,10 @@ export class Game extends Phaser.Scene {
         }, null, this);
         
         // Bombs vs ground
-        this.physics.overlap(this.player, this.bombs, (player, bomb) => {
+        this.physics.overlap(this.ground, this.bombs, (ground, bomb) => {
             if (!bomb.active) return;
-            // Make sure the bomb object has the method
-            if (typeof bomb.onHitGround !== 'function') return;
-            bomb.onHitGround();
+            // Delegate to ground object
+            this.ground.onHitByBomb(bomb);
         }, null, this);
         
         // Paratrooper vs paratrooper collisions
@@ -629,11 +498,15 @@ export class Game extends Phaser.Scene {
         }, null, this);
         
         // Paratroopers vs ground
-        this.physics.overlap(this.player, this.paratroopers, (player, para) => {
+        this.physics.overlap(this.ground, this.paratroopers, (ground, para) => {
             if (!para.active) return;
             // Make sure the para object has the method (it's a Paratrooper instance)
             if (typeof para.hitGround !== 'function') return;
-            para.hitGround();
+            const landed = para.hitGround();
+            // Track landed enemies
+            if (landed) {
+                this.ground.onParatrooperLanded(para);
+            }
         }, null, this);
         
         // Parachute collisions (using parachutes group)

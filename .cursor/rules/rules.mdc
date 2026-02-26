@@ -5,12 +5,11 @@ alwaysApply: true
 
 ## Project Guidelines
 
-Purpose: To create games in PhaserJS.
+Purpose: To create games in PhaserJS.  Version 3.90.
 
 Agent restrictions:  
+-Do not try to build and dev the site without asking explicitly
 -Do not evaluate the /.reference folder unless a file is added to chat as context.
--Do not change anything outside of the /site/src/game folder unless asked to.
+-Do not evaluate or change change anything outside of the /site/src/game folder unless asked to.
 
 Language: TypeScript, JavaScript ES6
-
-To-Do List: TODO.md is where issues can be preserved for future attention.
